@@ -43,6 +43,11 @@ int Epoll::wait(struct epoll_event *events) {
     return nfds;
 }
 
+void Epoll::close(int) {
+    Printer::print(std::cout, "Epoll::close", Symb::End);
+    ::close(fd);
+}
+
 void Epoll::close() {
     Printer::print(std::cout, "Epoll::close", Symb::End);
     int ret = ::close(fd);
@@ -51,10 +56,8 @@ void Epoll::close() {
 
 Epoll::~Epoll() {
     try {
-        close();
+        close(-1);
     } catch (std::runtime_error &e) {
-        std::cerr << e.what() << std::endl;
-        std::cerr << "Failed" << std::endl;
     }
 }
 

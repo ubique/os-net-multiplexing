@@ -111,8 +111,9 @@ void Socket::close() {
     Printer::print(std::cout, "Socket::close", Symb::End);
     if (m_flag == Socket::FLAG_SERVER) {
         checker(::close(connection_socket), "Unable to close connection socket");
-        if (prev_data_socket != -1)
-            checker(::close(data_socket), "Unable to close data socket");
+        if (prev_data_socket != -1 && data_socket != -1) {
+            ::close(data_socket);
+        }
         checker(::unlink(soc_name.data()), "Unable to unlink");
     }
     std::cout << "Socket down" << std::endl;

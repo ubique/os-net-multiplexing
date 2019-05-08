@@ -17,6 +17,8 @@ public:
 
     void close();
 
+    void close(int);
+
     void do_event(int, uint32_t, const std::string &);
 
     int wait(struct epoll_event *events);

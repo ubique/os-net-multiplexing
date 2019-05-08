@@ -42,8 +42,8 @@ public:
     static const int FLAG_CLIENT = false;
     static const int FLAG_DOWN = -1;
 
-    int connection_socket{};
-    int data_socket{};
+    int connection_socket = -1;
+    int data_socket = -1;
 private:
     int m_flag = -1;
     struct sockaddr_un addr{};
