@@ -1,6 +1,7 @@
 #pragma once
 
 #include <iostream>
+#include "EpollWaiter.h"
 
 
 class ConsoleHandler : public IHandler {
