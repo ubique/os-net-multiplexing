@@ -10,7 +10,7 @@ int main(int argc, char* argv[]) {
     }
     try {
         client client(argv[1], static_cast<uint16_t>(std::stoul(argv[2])));
-        client.run();
+        client.interact();
     } catch (any_net_exception& e) {
         std::cerr << e.what();
         return -1;

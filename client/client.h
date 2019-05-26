@@ -12,7 +12,7 @@
 struct client {
     client(char* address, uint16_t port);
 
-    void run();
+    void interact();
 
     ~client();
 
