@@ -49,12 +49,7 @@ int main(int argc, char** argv) {
         print_error("ERROR opening socket");
         return 0;
     }
-    int opt = 1;
-    if (setsockopt(socket_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) == -1) {
-        std::cerr << "Error seckopt" << std::endl;
-        return 0;
-    }
-
+    fcntl(0, F_SETFL, O_NONBLOCK);
     server = gethostbyname(host_name);
     if (server == nullptr) {
         print_error("ERROR, no such host");
@@ -68,55 +63,21 @@ int main(int argc, char** argv) {
     memcpy(reinterpret_cast<char*>(&server_addr.sin_addr.s_addr), static_cast<char*>(server->h_addr), server->h_length);
     server_addr.sin_port = htons(8888);
 
-
     int status = connect(socket_fd, reinterpret_cast<sockaddr*>(&server_addr), sizeof(server_addr));
-    for (int i = 0; i < 20; i++) {
+    for (int i = 0; i < 32; i++) {
         if (status != -1 || (errno != EINTR)) {
             break;
         }
         status = connect(socket_fd, reinterpret_cast<sockaddr*>(&server_addr), sizeof(server_addr));
     }
 
-    if (status == -1 && errno != EINPROGRESS) {
-        std::cerr << "Error in connecting" << std::endl;
-        exit(EXIT_FAILURE);
-    }
-    bool in_pr = errno == EINPROGRESS;
-    int epoll_fd = epoll_create(1);
+    int epoll_fd = epoll_create(8);
     if (epoll_fd == -1) {
         std::cerr << "Can't create epoll" << std::endl;
         exit(EXIT_FAILURE);
     }
 
-    struct epoll_event events[8];
-    if (in_pr) {
-        if (epoll_ctl_wrap(epoll_fd, EPOLL_CTL_ADD, socket_fd, EPOLLOUT) == -1) {
-            exit(EXIT_FAILURE);
-        }
-        while (true) {
-            int count = epoll_wait(epoll_fd, events, 8, -1);
-            if (count == -1) {
-                if (errno == EINTR) {
-                    continue;
-                }
-                break;
-            }
-            int stat;
-            socklen_t len = sizeof(int);
-            if (getsockopt(socket_fd, SOL_SOCKET, SO_ERROR, &stat, &len) == -1) {
-                exit(EXIT_FAILURE);
-            }
-            if (stat != 0) {
-                exit(EXIT_FAILURE);
-            }
-            if (stat == 0) {
-                break;
-            }
-        }
-        delete_socket(epoll_fd, socket_fd);
-    }
-
-    if (epoll_ctl_wrap(epoll_fd, EPOLL_CTL_ADD, socket_fd, EPOLLIN) == -1) {
+    if (epoll_ctl_wrap(epoll_fd, EPOLL_CTL_ADD, socket_fd, EPOLLIN | EPOLLOUT) == -1) {
         std::cerr << "Can't add socket" << std::endl;
         exit(EXIT_FAILURE);
     }
@@ -129,7 +90,7 @@ int main(int argc, char** argv) {
     std::cout << "Client started!" << std::endl;
     std::cout << "For exit print \"exit\"" << std::endl;
 
-
+    struct epoll_event events[8];
     while(true) {
         int count = epoll_wait(epoll_fd, events, 8, -1);
         if (count == -1) {

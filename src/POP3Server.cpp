@@ -29,7 +29,7 @@ POP3Server::POP3Server(const std::string &host_name, int port = 110) {
         stop();
     }
 
-    if (listen(socket_fd, COUNT_OF_POOLS) == -1) {
+    if (listen(socket_fd, COUNT_OF_CLIENTS) == -1) {
         print_error("ERROR listen socket");
         stop();
     }
@@ -65,7 +65,7 @@ void debug(std::string s) {
 }
 
 int POP3Server::run() {
-    int epoll_fd = epoll_create(1);
+    int epoll_fd = epoll_create(COUNT_OF_CLIENTS);
     if (epoll_fd == -1) {
         print_error("Can't create a epoll");
         exit(EXIT_FAILURE);
@@ -74,7 +74,6 @@ int POP3Server::run() {
         print_error("Can't add a server socket in pool");
         exit(EXIT_FAILURE);
     }
-    debug("point 1");
     DBase data_base;
     std::map<int, Session> sessions;
     struct epoll_event events[COUNT_OF_EVENTS];
@@ -93,7 +92,7 @@ int POP3Server::run() {
         for(size_t i = 0; i < count; i++) {
             if (events[i].data.fd == socket_fd) {
                 debug("in server server");
-                int client_fd = accept4(socket_fd, nullptr, nullptr, SOCK_NONBLOCK);
+                int client_fd = accept(socket_fd, nullptr, nullptr);
                 debug(std::to_string(client_fd));
                 if (client_fd == -1) {
                     if (errno !=EAGAIN && errno != EINTR) {
@@ -101,7 +100,7 @@ int POP3Server::run() {
                     }
                     continue;
                 }
-                if (epoll_ctl_wrap(epoll_fd, EPOLL_CTL_ADD, client_fd, EPOLLIN | EPOLLERR | EPOLLHUP) == -1) {
+                if (epoll_ctl_wrap(epoll_fd, EPOLL_CTL_ADD, client_fd, EPOLLIN | EPOLLOUT | EPOLLERR) == -1) {
                     print_error("Can't add client socket in poll");
                     close(client_fd);
                 } else {
@@ -238,10 +237,11 @@ int POP3Server::run() {
                             sessions[client_fd].set_data("-ERR, unknown command");
                         }
                     }
-
+                    epoll_ctl_wrap(epoll_fd, EPOLL_CTL_MOD, client_fd, EPOLLOUT);
                 }
                 if (events[i].events & EPOLLOUT) {
                     sessions[client_fd].send_msg();
+                    epoll_ctl_wrap(epoll_fd, EPOLL_CTL_ADD, client_fd, EPOLLIN | EPOLLHUP | EPOLLERR);
                 }
             }
         }

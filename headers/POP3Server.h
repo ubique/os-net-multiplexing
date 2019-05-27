@@ -20,7 +20,7 @@ public:
     POP3Server(const std::string& host_name, int port);
     ~POP3Server();
 private:
-    const int COUNT_OF_POOLS = 16;
+    const int COUNT_OF_CLIENTS = 16;
     const int COUNT_OF_EVENTS = 8;
     int socket_fd{};
     struct sockaddr_in server_addr{};

@@ -14,16 +14,10 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="2148dce0-0712-42d6-a0ca-e672efe65d4c" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/client.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/client.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/headers/DBase.h" beforeDir="false" afterPath="$PROJECT_DIR$/headers/DBase.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmake-build-debug/CMakeFiles/Server.dir/src/POP3Server.cpp.o" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/headers/POP3Server.h" beforeDir="false" afterPath="$PROJECT_DIR$/headers/POP3Server.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/headers/Session.h" beforeDir="false" afterPath="$PROJECT_DIR$/headers/Session.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/headers/Utils.h" beforeDir="false" afterPath="$PROJECT_DIR$/headers/Utils.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/DBase.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/DBase.cpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/POP3Server.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/POP3Server.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/Session.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/Session.cpp" afterDir="false" />
     </list>
     <ignored path="$PROJECT_DIR$/cmake-build-debug/" />
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
@@ -41,8 +35,8 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/POP3Server.cpp">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="124">
-              <caret line="242" column="41" selection-start-line="242" selection-start-column="41" selection-end-line="242" selection-end-column="41" />
+            <state relative-caret-position="150">
+              <caret line="10" column="26" selection-start-line="10" selection-start-column="26" selection-end-line="10" selection-end-column="26" />
               <folding>
                 <element signature="e#0#19#0" expanded="true" />
               </folding>
@@ -53,8 +47,8 @@
       <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/client.cpp">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="274">
-              <caret line="133" column="45" selection-start-line="133" selection-start-column="45" selection-end-line="133" selection-end-column="45" />
+            <state relative-caret-position="1034">
+              <caret line="103" column="41" selection-start-line="103" selection-start-column="41" selection-end-line="103" selection-end-column="41" />
               <folding>
                 <element signature="e#0#18#0" expanded="true" />
               </folding>
@@ -253,12 +247,12 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1558962168724</updated>
-      <workItem from="1558962171033" duration="17824000" />
+      <workItem from="1558962171033" duration="21111000" />
     </task>
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="17824000" />
+    <option name="totallyTimeSpent" value="21111000" />
   </component>
   <component name="ToolWindowManager">
     <frame x="43" y="25" width="1397" height="875" extended-state="6" />
@@ -275,7 +269,7 @@
       <window_info anchor="bottom" id="CMake" />
       <window_info anchor="bottom" id="Message" order="0" />
       <window_info anchor="bottom" id="Find" order="1" />
-      <window_info active="true" anchor="bottom" id="Run" order="2" visible="true" weight="0.23994638" />
+      <window_info active="true" anchor="bottom" id="Run" order="2" visible="true" weight="0.38873994" />
       <window_info anchor="bottom" id="Debug" order="3" weight="0.3994638" />
       <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
       <window_info anchor="bottom" id="Inspection" order="5" weight="0.4" />
@@ -391,8 +385,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/src/POP3Server.cpp">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="124">
-          <caret line="242" column="41" selection-start-line="242" selection-start-column="41" selection-end-line="242" selection-end-column="41" />
+        <state relative-caret-position="150">
+          <caret line="10" column="26" selection-start-line="10" selection-start-column="26" selection-end-line="10" selection-end-column="26" />
           <folding>
             <element signature="e#0#19#0" expanded="true" />
           </folding>
@@ -401,8 +395,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/client.cpp">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="274">
-          <caret line="133" column="45" selection-start-line="133" selection-start-column="45" selection-end-line="133" selection-end-column="45" />
+        <state relative-caret-position="1034">
+          <caret line="103" column="41" selection-start-line="103" selection-start-column="41" selection-end-line="103" selection-end-column="41" />
           <folding>
             <element signature="e#0#18#0" expanded="true" />
           </folding>
