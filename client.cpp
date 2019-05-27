@@ -47,7 +47,7 @@ void client::start() {
         error("Cannot create epoll instance");
     }
     ev.events = EPOLLIN;
-    ev.data.fd = epoll_fd;
+    ev.data.fd = tcp_socket;
     if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, tcp_socket, &ev) == -1) {
         error("Cannot invoke epoll_ctl on server");
     }
@@ -67,7 +67,6 @@ void client::start() {
             if (events[i].data.fd == 0) {
                 string message;
                 getline(cin, message);
-                cout << "sdsdcsd" << message << std::endl;
                 if (message == "STOP" || !cin) {
                     flag = false;
                     continue;
