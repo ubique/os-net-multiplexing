@@ -10,9 +10,9 @@
 class DBase {
 public:
     DBase();
-    bool is_user_by_login(const std::string &login) const;
-    std::vector<Message> get_messages_by_login(const std::string &login);
-    User get_user_by_login(const std::string &login);
+    bool is_user_by_login(std::string login) const;
+    std::vector<Message> get_messages_by_login(std::string login);
+    User get_user_by_login(std::string login);
     void remove_msg(const std::string &login, int number);
     void unremove_msgs(const std::string &login);
     void update(const std::string &login);

@@ -14,11 +14,11 @@ DBase::DBase() {
     messages["oleg"].push_back(Message("oleg", "gamest"));
 }
 
-bool DBase::is_user_by_login(const std::string &login) const {
+bool DBase::is_user_by_login(std::string login) const {
     return users.count(login) > 0;
 }
 
-std::vector<Message> DBase::get_messages_by_login(const std::string &login) {
+std::vector<Message> DBase::get_messages_by_login(std::string login) {
     std::vector<Message> result;
     if (messages.count(login) == 0) {
         return result;
@@ -31,7 +31,7 @@ std::vector<Message> DBase::get_messages_by_login(const std::string &login) {
     return result;
 }
 
-User DBase::get_user_by_login(const std::string &login) {
+User DBase::get_user_by_login(std::string login) {
     User user;
     if (users.count(login) == 0) {
         return user;
