@@ -23,11 +23,17 @@ using DefaultMultiplexor = EpollMultiplexor;
 using DefaultMultiplexor = SelectMultiplexor;
 #endif
 
-int main() {
+int main(int argc, char** argv) {
+
+    if (argc != 3) {
+        fprintf(stderr, "Usage: ClientMain host port\n");
+        return 1;
+    }
+
     std::shared_ptr<Multiplexor> mult = std::make_shared<DefaultMultiplexor>();
 
-    int port = 12345;
-    std::string host = "localhost";
+    int port = atoi(argv[2]);
+    std::string host = argv[1];
 
     addrinfo hints;
     addrinfo *result;

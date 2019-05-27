@@ -24,10 +24,15 @@ using DefaultMultiplexor = SelectMultiplexor;
 #endif
 
 
-int main() {
+int main(int argc, char** argv) {
+    if (argc != 2) {
+        fprintf(stderr, "Usage: ServerMain port\n");
+        return 1;
+    }
+
     std::shared_ptr<Multiplexor> mult = std::make_shared<DefaultMultiplexor>();
 
-    int port = 12345;
+    int port = atoi(argv[1]);
 
     struct sockaddr_in addr_server;
 
