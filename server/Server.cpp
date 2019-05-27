@@ -19,7 +19,17 @@ Server::Server(std::shared_ptr<Multiplexor> mult) : mult(std::move(mult)) {
 }
 
 void Server::bind(sockaddr *addr, size_t len) {
-    int ret = ::bind(socket, addr, len);
+    int ret;
+
+    int value = 1;
+    ret = setsockopt(socket, SOL_SOCKET, SO_REUSEADDR, &value, sizeof(value));
+
+    if (ret < 0) {
+        fail = true;
+        throw ServerException(strerror(errno));
+    }
+
+    ret = ::bind(socket, addr, len);
 
     if (ret < 0) {
         throw ServerException(strerror(errno));
@@ -31,9 +41,9 @@ void Server::bind(sockaddr *addr, size_t len) {
         throw ServerException(strerror(errno));
     }
 
-    int err = fcntl(socket, F_SETFL, flags | O_NONBLOCK);
+    ret = fcntl(socket, F_SETFL, flags | O_NONBLOCK);
 
-    if(err < 0) {
+    if(ret < 0) {
         throw ServerException(strerror(errno));
     }
 
