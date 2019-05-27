@@ -1,3 +1,6 @@
+# A simple TCP echo server
+Runs on Linux and FreeBSD. On Linux you can enable epoll() usage with -DUSE_EPOLL=1 argument to CMake. Otherwise, select() will be used.
+
 # Знакомство с мультиплексированием
 
 Необходимо попробовать клиент-серверное взаимодействие с использованием механизмов мультиплексирования.
