@@ -37,7 +37,7 @@ private:
         const int fd;
     };
 
-    void readCin();
+    void readStdin();
     void processRequest(int fd);
     void disconnect(int fd);
     void sendReply(int fd, int len);

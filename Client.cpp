@@ -41,7 +41,7 @@ void Client::run() {
             if (events[i].data.fd == sfd) {
                 getResponse();
             } else if (events[i].data.fd == 0) {
-                checkCin();
+                checkStdin();
             }
         }
     }
@@ -58,7 +58,7 @@ void Client::getResponse() {
     }
 }
 
-void Client::checkCin() {
+void Client::checkStdin() {
     std::string line;
     std::getline(std::cin, line);
     if (line == "exit") {

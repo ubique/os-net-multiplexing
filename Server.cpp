@@ -32,7 +32,7 @@ Server::Server(uint16_t port) : port(port),
     }
 
     if (!epoll_ctl_add(epollfd, 0, EPOLLIN)) {
-        throw ServerException("I wanted to listen to cin :(");
+        throw ServerException("I wanted to listen to stdin :(");
     }
 }
 
@@ -74,7 +74,7 @@ void Server::run() {
                     closeFileDescriptor(sfd);
                 }
             } else if (events[i].data.fd == 0) {
-                readCin();
+                readStdin();
             } else {
                 processRequest(events[i].data.fd);
             }
@@ -82,7 +82,7 @@ void Server::run() {
     }
 }
 
-void Server::readCin() {
+void Server::readStdin() {
     std::string line;
     std::getline(std::cin, line);
     if (line == "exit") {

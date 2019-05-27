@@ -39,7 +39,7 @@ private:
     static void closeFileDescriptor(int fd);
 private:
     void getResponse();
-    void checkCin();
+    void checkStdin();
     void sendData(std::string const& line);
 
     void epoll_ctl_add(int efd, int fd, uint32_t ev);
