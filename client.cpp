@@ -180,7 +180,8 @@ int main(int argc, char* argv[], char *envp[])
                         std::cout << "Error occurred while receiving a message\n";
                         continue;
                     } else if (!code) {
-                        std::cout << "Server isn't responding. Shutting down\n";
+                        std::cout << "Server isn't responding. " << TERMINATION_STRING;
+                        std::cout << " _____ \n/ O O \\ \n|     | \n\\ \\_/ / \n ----- \n";
                         for (unsigned int j = 0; j <= i; ++j)
                         {
                             if (close(clients[j].data.fd) == -1)

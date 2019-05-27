@@ -16,7 +16,7 @@ Same modified echo from <a href="https://github.com/ShuffleZZZ/os-net">previous 
 ### Expected behavior:
 + server notifies user through the console which client is connected after the first connection of client
 + server returns reversed copy of received string
-+ if sended string is `shutdown` - shuts down server (it returns terminating string and notifies user through the console)
++ if sended string is `shutdown` - shuts down server (it returns terminating string and notifies user through the console, other clients stop working as well due to absence of response)
 + if sended string is `disconnect` - return terminating string to client and notifies user through the console which client is disconnected
 + client shows server response on the new line
 + client stops it's work after receiving termination string with specific message ☺
