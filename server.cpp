@@ -25,7 +25,7 @@ void process_connection(descriptor_wrapper const& descriptor, descriptor_wrapper
         print_error("accept failed: ");
         return;
     }
-    if (!make_nonblocking_socket(client_descriptor)) {
+    if (!set_nonblocking(client_descriptor)) {
         return;
     }
     event.data.fd = client_descriptor;
@@ -33,7 +33,7 @@ void process_connection(descriptor_wrapper const& descriptor, descriptor_wrapper
     if (epoll_ctl(epoll_descriptor, EPOLL_CTL_ADD, client_descriptor, &event) == -1) {
         print_error("epoll_ctl failed: ");
     }
-    std::cout << "Connected to " << client_descriptor << std::endl;
+    std::cout << "Connected with descriptor " << client_descriptor << std::endl;
 }
 
 bool process_message(int client_descriptor) {
@@ -44,6 +44,10 @@ bool process_message(int client_descriptor) {
         return false;
     }
     if (request_len == 0) {
+        if (close(client_descriptor) == -1) {
+            print_error("descriptor close failed: ");
+        }
+        std::cout << "Connection with descriptor " << client_descriptor << " was closed" << std::endl;
         return false;
     }
     buffer[request_len] = 0;
@@ -59,7 +63,6 @@ bool process_message(int client_descriptor) {
     }
     return false;
 }
-
 
 
 int main(int argc, char **argv) {
@@ -92,7 +95,6 @@ int main(int argc, char **argv) {
             continue;
         }
         if (::bind(descriptor, result->ai_addr, result->ai_addrlen) == -1) {
-            std::cout << descriptor << std::endl;
             print_error("Can't bind socket, trying next: ");
             continue;
         }
@@ -103,7 +105,7 @@ int main(int argc, char **argv) {
         freeaddrinfo(result);
         return EXIT_FAILURE;
     }
-    if (!make_nonblocking_socket(descriptor)) {
+    if (!set_nonblocking(descriptor)) {
         freeaddrinfo(result);
         return EXIT_FAILURE;
     }
@@ -123,8 +125,7 @@ int main(int argc, char **argv) {
     event.data.fd = descriptor;
     event.events = EPOLLIN | EPOLLET;
     std::array<struct epoll_event, MAX_EVENTS> events;
-    if (epoll_ctl(epoll_descriptor, EPOLL_CTL_ADD, descriptor, &event) == -1) {
-        print_error("epoll_create1 failed : ");
+    if (!add_epoll(epoll_descriptor, descriptor, event)) {
         freeaddrinfo(result);
         return EXIT_FAILURE;
     }
@@ -135,10 +136,12 @@ int main(int argc, char **argv) {
             print_error("epoll_wait failed: ");
             break;
         }
-        for (size_t i = 0; i < num; i++) {
+        for (size_t i = 0; i < num && alive; i++) {
             if (events[i].events & (EPOLLERR | EPOLLHUP)) {
                 print_error("epoll error: ");
-                close(events[i].data.fd);
+                if (close(events[i].data.fd) == -1) {
+                    print_error("close failed: ");
+                }
             } else if (events[i].data.fd == descriptor) {
                 process_connection(descriptor, epoll_descriptor);
             } else {

@@ -1,11 +1,14 @@
 #pragma once
 
 #include <string>
+#include <iostream>
 #include <unistd.h>
+#include <sys/epoll.h>
 
 void print_error(std::string const& message);
 bool check_port(const char* port);
-bool make_nonblocking_socket(int descriptor);
+bool set_nonblocking(int descriptor);
+bool add_epoll(int epoll_descriptor, int descriptor, epoll_event & event);
 
 class descriptor_wrapper {
     int descriptor;
