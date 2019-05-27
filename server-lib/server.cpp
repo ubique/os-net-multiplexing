@@ -44,7 +44,7 @@ server::server(std::string const &address, std::string const &port_representatio
     while (true) {
         int dcnt = epoll_wait(epoll_fd.getDescriptor(), events, MAX_EVENTS, -1);
         if (dcnt == -1) {
-            throw server_exception("epoll_wait failed");
+            throw server_exception("epoll_wait error");
         }
         for (int i = 0; i < dcnt; ++i) {
             if (events[i].data.fd == socket_fd.getDescriptor()) {
@@ -63,7 +63,7 @@ server::server(std::string const &address, std::string const &port_representatio
                 if (epoll_ctl(epoll_fd.getDescriptor(), EPOLL_CTL_ADD, cl_socket_status, &main_event) == -1) {
                     printCerr("Could not add client into epoll_ctl");
                     if (close(cl_socket_status) == -1) {
-                        printCerr("Close failed");
+                        printCerr("Closing error");
                     }
                 }
             } else {
@@ -71,12 +71,12 @@ server::server(std::string const &address, std::string const &port_representatio
                 ssize_t read_size = recv(cl_socket_status, buffer, BF_SZ, 0);
                 if (read_size <= 0) {
                     if (read_size == -1) {
-                        printCerr("Could not read");
+                        printCerr("Receiving error");
                     }
                     std::cout << "Disconnected..." << std::endl;
                     if (epoll_ctl(epoll_fd.getDescriptor(), EPOLL_CTL_DEL, cl_socket_status, nullptr) == -1) {
                         if (close(cl_socket_status) == -1) {
-                            printCerr("Close failed");
+                            printCerr("Closing error");
                         }
                     }
                     continue;
