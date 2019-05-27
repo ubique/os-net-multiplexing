@@ -1,6 +1,7 @@
 #include "Client.h"
 
 #include <signal.h>
+#include <netinet/in.h>
 
 #include <algorithm>
 #include <string.h>

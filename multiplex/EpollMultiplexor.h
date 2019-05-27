@@ -1,6 +1,8 @@
 #ifndef OS_NET_MULTIPLEX_EPOLLMULTIPLEXOR_H
 #define OS_NET_MULTIPLEX_EPOLLMULTIPLEXOR_H
 
+#if defined(USE_EPOLL)
+
 #include "Multiplexor.h"
 
 #include <sys/time.h>
@@ -44,5 +46,7 @@ private:
     int fd_cur = 0;
 };
 
+
+#endif // USE_EPOLL
 
 #endif //OS_NET_MULTIPLEX_EPOLLMULTIPLEXOR_H

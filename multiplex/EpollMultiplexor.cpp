@@ -1,3 +1,5 @@
+#if defined(USE_EPOLL)
+
 #include <string.h>
 
 #include "EpollMultiplexor.h"
@@ -77,3 +79,5 @@ EpollMultiplexor::EpollMultiplexor() {
 EpollMultiplexor::~EpollMultiplexor() {
     close(epollfd);
 }
+
+#endif // USE_EPOLL

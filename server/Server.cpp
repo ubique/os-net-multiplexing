@@ -1,6 +1,8 @@
 #include "Server.h"
 #include "Acceptor.h"
 
+#include <netinet/in.h>
+
 #include <algorithm>
 #include <string.h>
 #include <errno.h>

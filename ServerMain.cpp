@@ -2,6 +2,8 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 
+#include <netinet/in.h>
+
 #include <errno.h>
 #include <fcntl.h>
 #include <stdlib.h>
@@ -23,7 +25,7 @@ using DefaultMultiplexor = SelectMultiplexor;
 
 
 int main() {
-    std::shared_ptr<Multiplexor> mult = std::make_shared<EpollMultiplexor>();
+    std::shared_ptr<Multiplexor> mult = std::make_shared<DefaultMultiplexor>();
 
     int port = 12345;
 

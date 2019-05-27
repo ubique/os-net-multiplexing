@@ -82,10 +82,12 @@ std::tuple<int, int, void*> SelectMultiplexor::next() {
 
     fd_ready_cnt--;
 
+    int cur_fd_cur = fd_cur++;
+
     return std::make_tuple(
-            mask == 0 ? -1 : fd_cur++,
+            mask == 0 ? -1 : cur_fd_cur,
             mask,
-            mask == 0 ? nullptr : attachments[fd_cur]
+            mask == 0 ? nullptr : attachments[cur_fd_cur]
     );
 }
 
