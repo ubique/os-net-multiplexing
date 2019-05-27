@@ -1,21 +1,22 @@
-# Знакомство с мультиплексированием
+# Multiplexing
 
-Необходимо попробовать клиент-серверное взаимодействие с использованием механизмов мультиплексирования.
-Помимо этого нужен Makefile, с помощью которого можно будет собрать клиент и сервер.
-Семейство протоколов для использования на выбор: AF_UNIX, AF_INET, AF_INET6.
+Same modified echo from previous task.
 
-## Сервер должен:
- * В качестве аргументов принимать адрес, на котором будет ожидать входящих соединений
- * Стартовать, делать bind(2) на заданный адрес и ожидать входящих соединений с использованием одного из механизмов мультиплексирования
- * При получении соединения, добавлять дескриптор в механизм мультиплексирования и ожидать событий и на нем
- * Выполнять на принятых соединениях серверную часть протокола
- * По завершении обработки соединения удалять все события из механизмов мультиплексирования
+## Usage:
 
-## Клиент должен:
- * Принимать параметром адрес, к которому стоит подключиться
- * Используя механизмы мультиплексирования подключаться к серверу
- * Используя механизмы мультиплексирования выполнять клиентскую часть протокола
- * Завершаться
-
-Для сильных духом предлагается реализовать код, который будет работать на двух разных ОС, используя на каждой специфичные механизмы мультиплексирования.
-Сильность духа будет оцениваться в два балла.
+### Commands in current repository:
++ `make` — creates server and client executable files
++ `make server` — creates server executable file
++ `make client` — creates client executable file
++ `make serverRun` — runs the server with 0 arguments (creates server executable file, if not done yet)
++ `make clientRun` — runs the client with 0 arguments (creates client executable file, if not done yet)
+### Server (or Client) arguments:
++ 0 argument case: server (client) will use default port `8080`
++ 1 argument case: port number (integer)
+### Expected behavior:
++ server notifies user through the console which client is connected after the first connection of client
++ server returns reversed copy of received string
++ if sended string is `shutdown` - shuts down server (it returns terminating string and notifies user through the console)
++ if sended string is `disconnect` - return terminating string to client and notifies user through the console which client is disconnected
++ client shows server response on the new line
++ client stops it's work after receiving termination string with specific message ☺
