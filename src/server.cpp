@@ -60,11 +60,11 @@ void run(std::string const &address, std::string const &port_representation)
 
     char message_buffer[BUFFER_SIZE];
     while (true) {
-        int availavle = epoll_wait(epollfd, events, MAX_EVENTS, -1);
-        if (availavle == -1) {
+        int available = epoll_wait(epollfd, events, MAX_EVENTS, -1);
+        if (available == -1) {
             throw std::runtime_error("Waiting failed");
         }
-        for (int i = 0; i < availavle; ++i) {
+        for (int i = 0; i < available; ++i) {
             if (events[i].data.fd == server_socket) {
                 struct sockaddr_in client;
                 size_t socket_size = sizeof(struct sockaddr_in);

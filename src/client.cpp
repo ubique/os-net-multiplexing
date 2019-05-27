@@ -105,7 +105,7 @@ void run(std::string const &address, std::string const &port_representation)
 static const std::string greeting =
     R"BLOCK(
 Echo client with reading stdin and listening to server via epoll.
-Usage: server [address [port]]
+Usage: client [address [port]]
 Default address is 127.0.0.1
 Default port is 8888
 You can send messages and get them back.
