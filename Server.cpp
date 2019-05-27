@@ -106,6 +106,7 @@ void Server::disconnect(int fd) {
     if (epoll_ctl(epollfd, EPOLL_CTL_DEL, fd, NULL) == -1) {
         perror("Disconnect failed");
     }
+    closeFileDescriptor(fd);
 }
 
 void Server::sendReply(int fd, int len) {
