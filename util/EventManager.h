@@ -2,7 +2,6 @@
 
 #include <vector>
 #include <map>
-#include <sys/epoll.h>
 #include <memory>
 #include <cstring>
 #include <sys/socket.h>
@@ -43,25 +42,21 @@ public:
 };
 
 
-class EpollWaiter;
+class EventManager;
 
 class IHandler {
 public:
-    virtual void handleData(EpollWaiter &waiter) = 0;
-    virtual void handleError(EpollWaiter &waiter) = 0;
+    virtual void handleData(EventManager &waiter) = 0;
+    virtual void handleError(EventManager &waiter) = 0;
     virtual int getFD() = 0;
-    virtual uint32_t getActions() = 0;
 
     virtual ~IHandler() = default;
-
-    static const uint32_t WAIT_INPUT = 1;
-    static const uint32_t WAIT_OUTPUT = 2;
 };
 
 
-class EpollWaiter {
+class EventManager {
 public:
-    EpollWaiter();
+    EventManager();
 
     void addHandler(const std::shared_ptr<IHandler> &handler);
 
@@ -76,4 +71,7 @@ private:
 
     int epfd;
     std::map<int, std::shared_ptr<IHandler>> handlers;
+#ifdef __FreeBSD__
+    std::vector<kevent>
+#endif
 };

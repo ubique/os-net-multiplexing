@@ -1,7 +1,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <fcntl.h>
-#include "util/EpollWaiter.h"
+#include "util/EventManager.h"
 #include <unistd.h>
 #include <iostream>
 #include <cstring>
@@ -27,12 +27,12 @@ public:
     static const int BUFFER_SIZE = 1024;
 
     Client(const string &host, in_port_t port) {
-        server_socket = socket(AF_INET, SOCK_STREAM, 0);
+        server_socket = socket(PF_INET, SOCK_STREAM, 0);
         if (server_socket == -1) {
             throw HandlerException("Cannot create socket.", errno);
         }
         sockaddr_in addr{};
-        addr.sin_family = AF_INET;
+        addr.sin_family = PF_INET;
         addr.sin_addr.s_addr = hostnameToIp(host);
         addr.sin_port = htons(port);
         if (connect(server_socket, (sockaddr *) &addr, sizeof(addr)) == -1) {
@@ -46,7 +46,7 @@ public:
         }
     }
 
-    void handleData(EpollWaiter &waiter) override {
+    void handleData(EventManager &waiter) override {
         uint8_t buffer[BUFFER_SIZE];
         int bytes = read(server_socket, buffer, BUFFER_SIZE);
 
@@ -63,13 +63,11 @@ public:
         }
     }
 
-    void handleError(EpollWaiter &waiter) override {
+    void handleError(EventManager &waiter) override {
         waiter.deleteAll();
     }
 
     int getFD() override { return server_socket; }
-
-    uint32_t getActions() override { return WAIT_INPUT; }
 
     ~Client() override { close(server_socket); }
 
@@ -87,7 +85,7 @@ public:
         }
     }
 
-    void handleData(EpollWaiter &waiter) override {
+    void handleData(EventManager &waiter) override {
         std::string message;
         getline(cin, message);
         if (message == "exit") {
@@ -107,7 +105,7 @@ int main(int argc, char *argv[]) {
         const in_port_t port = stoi(argv[2]);
         shared_ptr<IHandler> acceptor(new Client(argv[1], port));
         shared_ptr<IHandler> consoleHandler(new ClientConsole(acceptor.get()));
-        EpollWaiter epollWaiter;
+        EventManager epollWaiter;
         epollWaiter.addHandler(acceptor);
         epollWaiter.addHandler(consoleHandler);
         epollWaiter.wait();

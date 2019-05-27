@@ -1,13 +1,13 @@
 #pragma once
 
 #include <iostream>
-#include "EpollWaiter.h"
+#include "EventManager.h"
 
 
 class ConsoleHandler : public IHandler {
 public:
 
-    void handleError(EpollWaiter &waiter) override {
+    void handleError(EventManager &waiter) override {
         error_t error = getError(0);
         waiter.deleteAll();
         if (error != 0) {
@@ -16,8 +16,6 @@ public:
     }
 
     int getFD() override { return STDIN_FILENO; }
-
-    uint32_t getActions() override { return WAIT_INPUT; }
 
     ~ConsoleHandler() override = default;
 };
