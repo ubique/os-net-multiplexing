@@ -4,14 +4,15 @@
 #include <netdb.h>
 #include "utils.h"
 
-const size_t BUFFER_SIZE = 65508;
+const size_t BUFFER_SIZE = 65536;
+const size_t MAX_EVENTS = 50;
 
 void print_help() {
-    std::cout << "Usage: ./client IP PORT message" << std::endl;
+    std::cout << "Usage: ./client IP PORT" << std::endl;
 }
 
 int main(int argc, char **argv) {
-    if (argc != 4) {
+    if (argc != 3) {
         std::cerr << "Wrong number of arguments\n";
         print_help();
         return EXIT_FAILURE;
@@ -31,7 +32,7 @@ int main(int argc, char **argv) {
         freeaddrinfo(result);
         return EXIT_FAILURE;
     }
-    int descriptor = -1;
+    descriptor_wrapper descriptor = -1;
     for (chosen = result; chosen != nullptr; chosen = chosen->ai_next) {
         descriptor = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
         if (descriptor == -1) {
@@ -46,31 +47,37 @@ int main(int argc, char **argv) {
         return EXIT_FAILURE;
     }
     char buffer[BUFFER_SIZE];
-    std::cout << "Sending \"" << argv[3] << "\" to " << argv[1] << ":" << argv[2] << std::endl;
     if (connect(descriptor, chosen->ai_addr, chosen->ai_addrlen) == -1) {
         print_error("connect failed: ");
         freeaddrinfo(result);
-        close_socket(descriptor);
         return EXIT_FAILURE;
     }
-    auto response_len = send(descriptor, argv[3], std::strlen(argv[3]), 0);
-    if (response_len == -1) {
-        print_error("send failed: ");
-        freeaddrinfo(result);
-        close_socket(descriptor);
-        return EXIT_FAILURE;
+    std::string line;
+    while(true) {
+        std::cout << "Type mesaage: " << std::flush;
+        getline(std::cin, line);
+        if (line == "") {
+            continue;
+        }
+        if (std::cin.eof()) {
+            break;
+        }
+        std::cout << "Sending \"" << line << "\" to " << argv[1] << ":" << argv[2] << std::endl;
+        auto response_len = send(descriptor, line.data(), line.size(), 0);
+        if (response_len < 0) {
+            print_error("send failed: ");
+            freeaddrinfo(result);
+            break;
+        }
+        auto request_len = recv(descriptor, &buffer, BUFFER_SIZE - 1, 0);
+        if (request_len == -1) {
+            print_error("recv failed: ");
+            freeaddrinfo(result);
+            break;
+        }
+        buffer[request_len] = 0;
+        std::cout << "Response received: " << buffer << std::endl;
     }
-    std::cout << "Message has been sent" << std::endl;
-    auto request_len = recv(descriptor, &buffer, BUFFER_SIZE - 1, 0);
-    if (request_len == -1) {
-        print_error("recv failed: ");
-        freeaddrinfo(result);
-        close_socket(descriptor);
-        return EXIT_FAILURE;
-    }
-    buffer[request_len] = 0;
-    std::cout << "Response received: " << buffer << std::endl;
     freeaddrinfo(result);
-    close_socket(descriptor);
 
 }

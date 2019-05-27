@@ -2,13 +2,65 @@
 #include <unistd.h>
 #include <netdb.h>
 #include "utils.h"
+#include <sys/epoll.h>
+#include <array>
 #include <cstring>
 
 const size_t BUFFER_SIZE = 65536;
+const size_t MAX_EVENTS = 50;
 
 void print_help() {
     std::cout << "Usage: ./server PORT" << std::endl;
 }
+
+void process_connection(descriptor_wrapper const& descriptor, descriptor_wrapper const& epoll_descriptor) {
+    struct epoll_event event;
+    struct sockaddr client_addr;
+    socklen_t len = sizeof(client_addr);
+    int client_descriptor = accept(descriptor, (sockaddr *)&client_addr, &len);
+    if (client_descriptor == -1) {
+        if (errno == EAGAIN || errno == EWOULDBLOCK) {
+            return;
+        }
+        print_error("accept failed: ");
+        return;
+    }
+    if (!make_nonblocking_socket(client_descriptor)) {
+        return;
+    }
+    event.data.fd = client_descriptor;
+    event.events = EPOLLIN | EPOLLET;
+    if (epoll_ctl(epoll_descriptor, EPOLL_CTL_ADD, client_descriptor, &event) == -1) {
+        print_error("epoll_ctl failed: ");
+    }
+    std::cout << "Connected to " << client_descriptor << std::endl;
+}
+
+bool process_message(int client_descriptor) {
+    char buffer[BUFFER_SIZE];
+    auto request_len = recv(client_descriptor, buffer, BUFFER_SIZE - 1, 0);
+    if (request_len < 0) {
+        print_error("recv failed: ");
+        return false;
+    }
+    if (request_len == 0) {
+        return false;
+    }
+    buffer[request_len] = 0;
+    std::cout << "received: " << buffer << std::endl;
+    auto response_len = send(client_descriptor, buffer, request_len, 0);
+    if (response_len == -1) {
+        print_error("send failed: ");
+        return false;
+    }
+    if (std::strcmp("stop", buffer) == 0) {
+        std::cout << "Server stopped" << std::endl;
+        return true;
+    }
+    return false;
+}
+
+
 
 int main(int argc, char **argv) {
     if (argc != 2) {
@@ -32,7 +84,7 @@ int main(int argc, char **argv) {
         freeaddrinfo(result);
         return EXIT_FAILURE;
     }
-    int descriptor = -1;
+    descriptor_wrapper descriptor = -1;
     for (chosen = result; chosen != nullptr; chosen = chosen->ai_next) {
         descriptor = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
         if (descriptor == -1) {
@@ -40,8 +92,8 @@ int main(int argc, char **argv) {
             continue;
         }
         if (::bind(descriptor, result->ai_addr, result->ai_addrlen) == -1) {
+            std::cout << descriptor << std::endl;
             print_error("Can't bind socket, trying next: ");
-            close_socket(descriptor);
             continue;
         }
         break;
@@ -51,42 +103,50 @@ int main(int argc, char **argv) {
         freeaddrinfo(result);
         return EXIT_FAILURE;
     }
-  /*  if (!make_nonblocking_socket(descriptor)) {
+    if (!make_nonblocking_socket(descriptor)) {
         freeaddrinfo(result);
         return EXIT_FAILURE;
-    }*/
+    }
     if (listen(descriptor, SOMAXCONN) == -1) {
         print_error("listen failed: ");
         freeaddrinfo(result);
         return EXIT_FAILURE;
     }
 
-    char buffer[BUFFER_SIZE];
-    while (true) {
-        int client_descriptor = accept(descriptor, chosen->ai_addr, &chosen->ai_addrlen);
-        if (client_descriptor == -1) {
-            print_error("accept failed: ");
-            continue;
-        }
-        auto request_len = recv(client_descriptor, buffer, BUFFER_SIZE - 1, 0);
-       // auto request_len = recvfrom(descriptor, buffer, BUFFER_SIZE - 1, 0, (struct sockaddr *)&client_address, &len);
-        if (request_len < 0) {
-            print_error("recv failed: ");
-            continue;
-        }
-        buffer[request_len] = 0;
-        std::cout << "received: " << buffer << std::endl;
-        auto response_len = send(client_descriptor, buffer, request_len, 0);
-       // auto response_len = sendto(descriptor, buffer, request_len, 0, (struct sockaddr *)&client_address, len);
-        if (response_len == -1) {
-            print_error("send failed: ");
-            continue;
-        }
-        if (std::strcmp("stop", buffer) == 0) {
-            std::cout << "Server stopped" << std::endl;
+    struct epoll_event event;
+    descriptor_wrapper epoll_descriptor = epoll_create1(0);
+    if (epoll_descriptor == -1) {
+        print_error("epoll_create1 failed : ");
+        freeaddrinfo(result);
+        return EXIT_FAILURE;
+    }
+    event.data.fd = descriptor;
+    event.events = EPOLLIN | EPOLLET;
+    std::array<struct epoll_event, MAX_EVENTS> events;
+    if (epoll_ctl(epoll_descriptor, EPOLL_CTL_ADD, descriptor, &event) == -1) {
+        print_error("epoll_create1 failed : ");
+        freeaddrinfo(result);
+        return EXIT_FAILURE;
+    }
+    bool alive = true;
+    while (alive) {
+        int num = epoll_wait(epoll_descriptor, events.data(), MAX_EVENTS, -1);
+        if (num < 0) {
+            print_error("epoll_wait failed: ");
             break;
         }
+        for (size_t i = 0; i < num; i++) {
+            if (events[i].events & (EPOLLERR | EPOLLHUP)) {
+                print_error("epoll error: ");
+                close(events[i].data.fd);
+            } else if (events[i].data.fd == descriptor) {
+                process_connection(descriptor, epoll_descriptor);
+            } else {
+                if (process_message(events[i].data.fd)) {
+                    alive = false;
+                }
+            }
+        }
     }
-    close_socket(descriptor);
     freeaddrinfo(result);
 }
