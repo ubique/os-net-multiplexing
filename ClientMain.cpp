@@ -49,25 +49,45 @@ int main() {
 
     for (rp = result; rp != NULL; rp = rp->ai_next) {
         ((sockaddr_in *) rp->ai_addr)->sin_port = htons(port);
-        Client cli(mult);
-        cli.connect(rp->ai_addr, rp->ai_addrlen);
+        std::unique_ptr<Client> cli;
+        try {
+            cli = std::make_unique<Client>(mult);
+            cli->connect(rp->ai_addr, rp->ai_addrlen);
+        }  catch (ClientException e) {
+            fprintf(stderr, "Client failed: %s\n", strerror(errno));
+            break;
+        }
 
         int fd, flags;
         void *ptr;
 
-        while(!cli.isReady() && !cli.isFailed()) {
-            mult->select(-1);
+        while (!cli->isReady() && !cli->isFailed()) {
+            try {
+                mult->select(-1);
+            } catch (MultiplexorException e) {
+                fprintf(stderr, "Multiplexor retuned error: %s\n", strerror(errno));
+                break;
+            }
 
-            while (std::get<0>(std::tie(fd, flags, ptr) = mult->next()) >= 0) {
-                ((IHandle *) ptr)->handle(flags);
+            try {
+                while (std::get<0>(std::tie(fd, flags, ptr) = mult->next()) >= 0) {
+                    ((IHandle *) ptr)->handle(flags);
+                }
+            } catch (MultiplexorException e) {
+                fprintf(stderr, "Multiplexor retuned error: %s\n", strerror(errno));
+                break;
+            } catch (ClientException e) {
+                fprintf(stderr, "Client failed: %s\n", strerror(errno));
+                break;
             }
         }
 
-        if (!cli.isFailed()) break;
+        if (!cli->isFailed()) break;
     }
 
     if (rp == NULL) {
-        fprintf(stderr, "Connection on all addresses failed\n");
+        fprintf(stderr,
+                "Connection on all addresses failed\n");
         exit(EXIT_FAILURE);
     }
 

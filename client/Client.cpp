@@ -1,5 +1,7 @@
 #include "Client.h"
 
+#include <signal.h>
+
 #include <algorithm>
 #include <string.h>
 #include <errno.h>
@@ -7,10 +9,16 @@
 #include <fcntl.h>
 #include <iostream>
 
-Client::Client(std::shared_ptr<Multiplexor> mult) : mult(mult) {
+Client::Client(std::shared_ptr<Multiplexor> mult) : mult(std::move(mult)) {
     socket = ::socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, IPPROTO_TCP);
 
     if (socket == -1) {
+        throw ClientException(strerror(errno));
+    }
+
+    auto ret = signal(SIGPIPE, SIG_IGN); // We should ignore SIGPIPE
+
+    if (ret == SIG_ERR) {
         throw ClientException(strerror(errno));
     }
 }

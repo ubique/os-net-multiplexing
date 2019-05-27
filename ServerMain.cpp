@@ -33,17 +33,35 @@ int main() {
     addr_server.sin_addr.s_addr = INADDR_ANY;
     addr_server.sin_port = htons(port);
 
-    Server srv (mult);
-    srv.bind((sockaddr*) &addr_server, sizeof(addr_server));
+    std::unique_ptr<Server> srv = std::make_unique<Server>(mult);
+    try {
+        srv->bind((sockaddr *) &addr_server, sizeof(addr_server));
+    } catch (ServerException e) {
+        fprintf(stderr, "Server failed: %s\n", strerror(errno));
+        return 1;
+    }
 
     int fd, flags;
     void* ptr;
 
-    while(!srv.isReady() && !srv.isFailed()) {
-        mult->select(-1);
+    while(!srv->isReady() && !srv->isFailed()) {
+        try {
+            mult->select(-1);
+        } catch(MultiplexorException e) {
+            fprintf(stderr, "Multiplexor retuned error: %s\n", strerror(errno));
+            return 1;
+        }
 
-        while (std::get<0>(std::tie(fd, flags, ptr) = mult->next()) >= 0) {
-            ((IHandle *) ptr)->handle(flags);
+        try {
+            while (std::get<0>(std::tie(fd, flags, ptr) = mult->next()) >= 0) {
+                ((IHandle *) ptr)->handle(flags);
+            }
+        } catch (MultiplexorException e) {
+            fprintf(stderr, "Multiplexor retuned error: %s\n", strerror(errno));
+            break;
+        } catch (ServerException e) {
+            fprintf(stderr, "Server failed: %s\n", strerror(errno));
+            break;
         }
     }
 

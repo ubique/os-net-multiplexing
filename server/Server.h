@@ -25,13 +25,15 @@ public:
 };
 
 class Server : public IHandle {
+    static constexpr int BACKLOG = 10;
+
     int socket;
     std::shared_ptr<Multiplexor> mult;
     std::function<void(void)> handler = [](){};
 
     bool ready = false, fail = false;
 public:
-    Server(std::shared_ptr<Multiplexor> mult);
+    explicit Server(std::shared_ptr<Multiplexor> mult);
 
     void bind(sockaddr *addr, size_t len);
     void check_err();

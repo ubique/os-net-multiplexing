@@ -37,7 +37,7 @@ class Client : public IHandle {
 
     bool ready = false, fail = false;
 public:
-    Client(std::shared_ptr<Multiplexor> mult);
+    explicit Client(std::shared_ptr<Multiplexor> mult);
 
     void connect(sockaddr *addr, size_t len);
     void check_err();

@@ -8,7 +8,7 @@
 #include <fcntl.h>
 #include <iostream>
 
-Server::Server(std::shared_ptr<Multiplexor> mult) : mult(mult) {
+Server::Server(std::shared_ptr<Multiplexor> mult) : mult(std::move(mult)) {
     socket = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 
     if (socket == -1) {
@@ -24,9 +24,18 @@ void Server::bind(sockaddr *addr, size_t len) {
     }
 
     int flags = fcntl(socket, F_GETFL, 0);
+
+    if(flags < 0) {
+        throw ServerException(strerror(errno));
+    }
+
     int err = fcntl(socket, F_SETFL, flags | O_NONBLOCK);
 
-    if (::listen (socket, 10) < 0) {
+    if(err < 0) {
+        throw ServerException(strerror(errno));
+    }
+
+    if (::listen (socket, BACKLOG) < 0) {
         throw ServerException(strerror(errno));
     }
 

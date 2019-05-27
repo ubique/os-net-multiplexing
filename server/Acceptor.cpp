@@ -13,6 +13,7 @@ Acceptor::Acceptor(std::shared_ptr<Multiplexor> mult, int fd) : mult(mult), fd(f
 }
 
 void Acceptor::self_destroy() {
+    close();
     delete this;
 }
 
