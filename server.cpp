@@ -84,9 +84,7 @@ void wait_for_connections(const fd_wrapper &listener) {
         throw std::runtime_error("Epoll_ctl failed");
     }
 
-
     while (true) {
-
         int cnt = epoll_wait(epollfd.get(), events, MAX_EVENTS, -1);
 
         if (cnt == -1) {

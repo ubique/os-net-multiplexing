@@ -60,14 +60,14 @@ void send_and_receive(const fd_wrapper &sender) {
     ev.data.fd = sender.get();
 
     if (epoll_ctl(epollfd.get(), EPOLL_CTL_ADD, sender.get(), &ev) == -1) {
-        throw std::runtime_error("Epoll_ctl failed");
+        throw std::runtime_error("Epoll_ctl add failed");
     }
 
     ev.events = EPOLLIN;
     ev.data.fd = 0;
 
     if (epoll_ctl(epollfd.get(), EPOLL_CTL_ADD, 0, &ev) == -1) {
-        throw std::runtime_error("Epoll_ctl failed");
+        throw std::runtime_error("Epoll_ctl add failed");
     }
 
 
@@ -114,6 +114,11 @@ void send_and_receive(const fd_wrapper &sender) {
                 expected_sum += message.size();
             }
         }
+    }
+
+    if (epoll_ctl(epollfd.get(), EPOLL_CTL_DEL, sender.get(), nullptr) == -1 ||
+        epoll_ctl(epollfd.get(), EPOLL_CTL_DEL, 0, nullptr) == -1) {
+        throw std::runtime_error("Epoll_ctl del failed");
     }
 }
 
