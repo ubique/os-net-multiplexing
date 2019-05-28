@@ -5,14 +5,31 @@
 #include <string.h>
 #include <algorithm>
 
+#include "Server.h"
 #include "Acceptor.h"
 
 Acceptor::Acceptor(std::shared_ptr<Multiplexor> mult, int fd) : mult(mult), fd(fd) {
     mult->add_fd(fd, Multiplexor::OP_READ | Multiplexor::OP_EXCEPT, this);
+
+    int flags = fcntl(fd, F_GETFL, 0);
+
+    if(flags < 0) {
+        throw ServerException(strerror(errno));
+    }
+
+    int ret = fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+
+    if(ret < 0) {
+        throw ServerException(strerror(errno));
+    }
+
     handler = [this](){read();};
+
+    printf("Acceptor created\n");
 }
 
 void Acceptor::self_destroy() {
+    printf("Acceptor self-destroy\n");
     close();
     delete this;
 }

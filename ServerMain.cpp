@@ -61,6 +61,7 @@ int main(int argc, char** argv) {
 
         try {
             while (std::get<0>(std::tie(fd, flags, ptr) = mult->next()) >= 0) {
+                printf("New event on fd %d\n", fd);
                 ((IHandle *) ptr)->handle(flags);
             }
         } catch (MultiplexorException e) {

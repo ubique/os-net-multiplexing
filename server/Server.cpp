@@ -16,6 +16,8 @@ Server::Server(std::shared_ptr<Multiplexor> mult) : mult(std::move(mult)) {
     if (socket == -1) {
         throw ServerException(strerror(errno));
     }
+
+    printf("Server created\n");
 }
 
 void Server::bind(sockaddr *addr, size_t len) {
@@ -54,6 +56,8 @@ void Server::bind(sockaddr *addr, size_t len) {
     mult->add_fd(socket, Multiplexor::OP_READ, this);
 
     handler = [this](){ accept(); };
+
+    printf("Socket bound\n");
 }
 
 void Server::check_err() {
