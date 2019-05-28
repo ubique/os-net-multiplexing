@@ -13,7 +13,7 @@ using namespace std;
 
 
 in_addr_t hostnameToIp(string const &hostname) {
-    auto he = gethostbyname(hostname.c_str());
+    const auto he = gethostbyname(hostname.c_str());
     if (he == nullptr) {
         return 0;
     }
@@ -46,16 +46,16 @@ public:
         }
     }
 
-    void handleData(EventManager &waiter) override {
+    void handleData(EventManager &eventManager) override {
         uint8_t buffer[BUFFER_SIZE];
-        int bytes = read(server_socket, buffer, BUFFER_SIZE);
+        const int bytes = read(server_socket, buffer, BUFFER_SIZE);
 
         if (bytes == -1) {
-            waiter.deleteAll();
+            eventManager.deleteAll();
             throw HandlerException("Cannot read message.", errno);
         } else if (bytes == 0) {
             cout << "Server disconnected." << endl << endl;
-            waiter.deleteAll();
+            eventManager.deleteAll();
         } else {
             string query(buffer, buffer + bytes);
             cout << "Server answer: " << endl
@@ -63,8 +63,8 @@ public:
         }
     }
 
-    void handleError(EventManager &waiter) override {
-        waiter.deleteAll();
+    void handleError(EventManager &eventManager) override {
+        eventManager.deleteAll();
     }
 
     int getFD() override { return server_socket; }
@@ -85,11 +85,11 @@ public:
         }
     }
 
-    void handleData(EventManager &waiter) override {
+    void handleData(EventManager &eventManager) override {
         std::string message;
         getline(cin, message);
         if (message == "exit") {
-            waiter.deleteAll();
+            eventManager.deleteAll();
         } else {
             client->sendMessage(message);
         }
@@ -111,7 +111,7 @@ int main(int argc, char *argv[]) {
         epollWaiter.wait();
     } catch (HandlerException const &e) {
         cerr << e.what() << endl;
-    } catch (EpollException const &e) {
+    } catch (EventException const &e) {
         cerr << e.what() << endl;
     } catch (logic_error const &e) {
         cerr << "Invalid arguments." << endl;

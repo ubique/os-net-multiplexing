@@ -7,9 +7,9 @@
 class ConsoleHandler : public IHandler {
 public:
 
-    void handleError(EventManager &waiter) override {
+    void handleError(EventManager &eventManager) override {
         error_t error = getError(0);
-        waiter.deleteAll();
+        eventManager.deleteAll();
         if (error != 0) {
             throw HandlerException("Console failed.", error);
         }

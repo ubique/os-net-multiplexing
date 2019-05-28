@@ -16,12 +16,12 @@ EventManager::EventManager() {
 #ifdef __FreeBSD__
     epfd = kqueue();
     if (epfd == -1) {
-        throw EpollException("Cannot create kqueue.", errno);
+        throw EventException("Cannot create kqueue.", errno);
     }
 #else
     epfd = epoll_create1(0);
     if (epfd == -1) {
-        throw EpollException("Cannot create epoll.", errno);
+        throw EventException("Cannot create epoll.", errno);
     }
 #endif
 }
@@ -32,14 +32,14 @@ void EventManager::addHandler(std::shared_ptr<IHandler> const &handler) {
     struct kevent event{};
     EV_SET(&event, fd, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, NULL);
     if (kevent(epfd, &event, 1, NULL, 0, NULL) == -1) {
-        throw EpollException("Cannot add handler.", errno);
+        throw EventException("Cannot add handler.", errno);
     }
 #else
     struct epoll_event event{};
     event.data.fd = fd;
     event.events |= EPOLLIN;
     if (epoll_ctl(epfd, EPOLL_CTL_ADD, fd, &event) == -1) {
-        throw EpollException("Cannot add handler.", errno);
+        throw EventException("Cannot add handler.", errno);
     }
 #endif
 
@@ -60,7 +60,7 @@ void EventManager::wait() {
         int nEvents = epoll_wait(epfd, events, MAX_EVENTS, -1);
 #endif
         if (nEvents == -1) {
-            throw EpollException("waiting failed", errno);
+            throw EventException("waiting failed", errno);
         }
         for (int i = 0; i < nEvents; i++) {
             try {
@@ -100,11 +100,11 @@ void EventManager::unregisterHandler(int fd) {
     struct kevent event{};
     EV_SET(&event, fd, 0, EV_DELETE, 0, 0, NULL);
     if (kevent(epfd, &event, 1, NULL, 0, NULL) == -1) {
-        throw EpollException("Cannot delete handler.", errno);
+        throw EventException("Cannot delete handler.", errno);
     }
 #else
     if (epoll_ctl(epfd, EPOLL_CTL_DEL, fd, nullptr) == -1) {
-        throw EpollException("Cannot delete handler.", errno);
+        throw EventException("Cannot delete handler.", errno);
     }
 #endif
 }

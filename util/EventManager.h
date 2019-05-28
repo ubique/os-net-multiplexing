@@ -24,10 +24,10 @@ inline error_t getError(int fd) {
 }
 
 
-class EpollException : public std::exception {
+class EventException : public std::exception {
     std::string msg;
 public:
-    explicit EpollException(std::string const &msg, error_t error)
+    explicit EventException(std::string const &msg, error_t error)
             : msg(msg + "\nError: " + strerror(error)) {}
 
     char const *what() const noexcept override {
@@ -52,8 +52,8 @@ class EventManager;
 
 class IHandler {
 public:
-    virtual void handleData(EventManager &waiter) = 0;
-    virtual void handleError(EventManager &waiter) = 0;
+    virtual void handleData(EventManager &eventManager) = 0;
+    virtual void handleError(EventManager &eventManager) = 0;
     virtual int getFD() = 0;
 
     virtual ~IHandler() = default;
