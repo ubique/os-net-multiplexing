@@ -66,7 +66,7 @@ public:
         addr.sin_family = PF_INET;
         addr.sin_port = htons(port);
         addr.sin_addr.s_addr = INADDR_ANY;
-        if (bind(listen_socket, (sockaddr *) &addr, sizeof(addr)) == -1) {
+        if (::bind(listen_socket, (sockaddr *) &addr, sizeof(addr)) == -1) {
             throw HandlerException("Cannot bind.", errno);
         }
         if (listen(listen_socket, MAX_PENDING) == -1) {

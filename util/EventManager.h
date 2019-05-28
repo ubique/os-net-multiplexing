@@ -1,10 +1,16 @@
 #pragma once
 
 #include <vector>
+#include <string>
 #include <map>
 #include <memory>
 #include <cstring>
 #include <sys/socket.h>
+
+
+#ifdef __FreeBSD__
+typedef errno_t error_t;
+#endif
 
 
 inline error_t getError(int fd) {
@@ -71,7 +77,4 @@ private:
 
     int epfd;
     std::map<int, std::shared_ptr<IHandler>> handlers;
-#ifdef __FreeBSD__
-    std::vector<kevent>
-#endif
 };

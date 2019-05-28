@@ -8,9 +8,7 @@
 #ifdef __FreeBSD__
 #include <sys/event.h>
 #else
-
 #include <sys/epoll.h>
-
 #endif
 
 
@@ -31,13 +29,13 @@ EventManager::EventManager() {
 void EventManager::addHandler(std::shared_ptr<IHandler> const &handler) {
     int fd = handler->getFD();
 #ifdef __FreeBSD__
-    kevent event{};
+    struct kevent event{};
     EV_SET(&event, fd, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, NULL);
     if (kevent(epfd, &event, 1, NULL, 0, NULL) == -1) {
         throw EpollException("Cannot add handler.", errno);
     }
 #else
-    epoll_event event{};
+    struct epoll_event event{};
     event.data.fd = fd;
     event.events |= EPOLLIN;
     if (epoll_ctl(epfd, EPOLL_CTL_ADD, fd, &event) == -1) {
@@ -51,9 +49,9 @@ void EventManager::addHandler(std::shared_ptr<IHandler> const &handler) {
 void EventManager::wait() {
     const int MAX_EVENTS = 10;
 #ifdef __FreeBSD__
-    kevent events[MAX_EVENTS];
+    struct kevent events[MAX_EVENTS];
 #else
-    epoll_event events[MAX_EVENTS];
+    struct epoll_event events[MAX_EVENTS];
 #endif
     while (!handlers.empty()) {
 #ifdef __FreeBSD__
@@ -65,12 +63,12 @@ void EventManager::wait() {
             throw EpollException("waiting failed", errno);
         }
         for (int i = 0; i < nEvents; i++) {
-            auto handler = handlers[events[i].data.fd];
+            auto handler = handlers[events[i].ident];
             try {
 #ifdef __FreeBSD__
-                bool isError = event.flags & EV_ERROR;
+                bool isError = events[i].flags & EV_ERROR;
 #else
-                bool isError = events->events & EPOLLERR;
+                bool isError = events[i].events & EPOLLERR;
 #endif
                 if (isError) {
                     handler->handleError(*this);
@@ -98,7 +96,7 @@ void EventManager::deleteAll() {
 
 void EventManager::unregisterHandler(int fd) {
 #ifdef __FreeBSD__
-    kevent event{};
+    struct kevent event{};
     EV_SET(&event, fd, 0, EV_DELETE, 0, 0, NULL);
     if (kevent(epfd, &event, 1, NULL, 0, NULL) == -1) {
         throw EpollException("Cannot delete handler.", errno);
