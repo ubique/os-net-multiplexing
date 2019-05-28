@@ -63,11 +63,12 @@ void EventManager::wait() {
             throw EpollException("waiting failed", errno);
         }
         for (int i = 0; i < nEvents; i++) {
-            auto handler = handlers[events[i].ident];
             try {
 #ifdef __FreeBSD__
+                auto handler = handlers[events[i].ident];
                 bool isError = events[i].flags & EV_ERROR;
 #else
+                auto handler = handlers[events[i].data.fd];
                 bool isError = events[i].events & EPOLLERR;
 #endif
                 if (isError) {
