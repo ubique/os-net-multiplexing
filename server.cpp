@@ -3,6 +3,7 @@
 #include <cstring>
 #include <netinet/in.h>
 #include <sys/epoll.h>
+#include <fcntl.h>
 
 const int PROTOCOL_FAMILY = AF_INET;
 const int BUFFER_SIZE = 1024;
@@ -117,7 +118,17 @@ void sendMessage(int socket) {
     close(socket);
 }
 
+void setSocketNonBlocking(int socket) {
+    if (fcntl(socket,F_SETFL,fcntl(socket,F_GETFD,0) | O_NONBLOCK) < 0){
+        printErr("Unable to set socket non-blocking");
+        exit(EXIT_FAILURE);
+    }
+}
+
+
 void echo(int listener, int port) {
+    setSocketNonBlocking(listener);
+
     bind(listener, port);
 
     listen(listener);
