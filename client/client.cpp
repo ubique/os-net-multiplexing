@@ -11,7 +11,6 @@
 #include <iostream>
 #include <string>
 #include <vector>
-#include "chat_interactor.h"
 #include <cstring>
 
 client_exception::client_exception(std::string const& msg) : std::runtime_error(msg + ": " + std::string(strerror(errno))) {}
