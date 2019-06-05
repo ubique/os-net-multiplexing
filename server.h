@@ -10,21 +10,21 @@
 #include <netinet/in.h>
 #include <string>
 #include <sys/epoll.h>
+#include "my_fd.h"
+
 static constexpr char response_prefix[] = "Hello, ";
 static constexpr size_t MAX_EVENTS = 32;
 
-class hello_server
+class server
 {
 public:
-    hello_server();
+    server();
 
     void start(const char*, const in_port_t);
 private:
-    void make_response();
-private:
     static constexpr size_t BUFFER_SIZE = 4096;
-    int tcp_socket;
-    char buffer[BUFFER_SIZE + sizeof(response_prefix) + 1]; //for null terminated string
+    my_fd tcp_socket;
+    char buffer[BUFFER_SIZE]; //for null terminated string
     struct epoll_event ev;
     struct epoll_event events[MAX_EVENTS];
 
