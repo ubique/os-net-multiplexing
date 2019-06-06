@@ -64,29 +64,48 @@ void make_request() {
         for (int i = 0; i < nfds; ++i) {
             if (events[i].data.fd == sock) {
                 std::vector<char> response(BUFFER_SIZE);
-                ssize_t read = recv(sock, response.data(), BUFFER_SIZE, 0);
-                if (read > 0) {
-                    response.resize(read);
+
+                ssize_t all_received = 0;
+                while (all_received < BUFFER_SIZE) {
+                    ssize_t received = recv(sock, response.data() + all_received, BUFFER_SIZE, 0);
+                    all_received += received;
+                    if (received == -1) {
+                        perror("recv");
+                        throw std::runtime_error("Can't receive request");
+                    }
+                    if (response.back() == '\0') {
+                        break;
+                    }
+                }
+
+                if (all_received > 0) {
+                    response.resize(all_received);
                     std::cout << "Response: " << response.data() << std::endl;
                 } else {
-                    if (read == -1) {
+                    if (all_received == -1) {
                         perror("recv");
                         throw std::runtime_error("Can't receive response");
-                    } else if (read == 0) {
+                    } else if (all_received == 0) {
                         action = false;
                         continue;
                     }
                 }
             }
+
             if (events[i].data.fd == 0) {
                 std::string message;
                 std::getline(std::cin, message);
                 if (message == "ex") {
                     action = false;
                 } else {
-                    if (send(sock, message.data(), message.length(), 0) == -1) {
-                        perror("send");
-                        throw std::runtime_error("Can't send request");
+                    ssize_t all_sended = 0;
+                    while (all_sended < std::min(BUFFER_SIZE, message.size() + 1)) {
+                        ssize_t sended = send(sock, message.data() + all_sended, BUFFER_SIZE, 0);
+                        if (sended == -1) {
+                            perror("send");
+                            throw std::runtime_error("Can't send request");
+                        }
+                        all_sended += sended;
                     }
                 }
             }

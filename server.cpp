@@ -82,18 +82,40 @@ void run() {
             } else {
                 std::vector<char> request(BUFFER_SIZE);
                 int sock = events[i].data.fd;
-                ssize_t read = recv(sock, request.data(), BUFFER_SIZE, 0);
-                if (read > 0) {
-                    request.resize(read);
-                    std::cout << "Request: " << request.data() << std::endl;
-                    if (send(sock, request.data(), static_cast<size_t>(read), 0) == -1) {
-                        perror("send");
-                    }
-                } else {
-                    if (read == -1) {
+
+                ssize_t all_received = 0;
+                while (all_received < BUFFER_SIZE) {
+                    ssize_t received = recv(sock, request.data() + all_received, BUFFER_SIZE, 0);
+                    all_received += received;
+                    if (received == -1) {
                         perror("recv");
-                    } else if (read == 0) {
+                        throw std::runtime_error("Can't receive request");
+                    }
+                    if (request.back() == '\0') {
+                        break;
+                    }
+                }
+
+                if (all_received > 0) {
+                    request.resize(all_received);
+                    std::cout << "Request: " << request.data() << std::endl;
+                    ssize_t all_sended = 0;
+                    while (all_sended < std::min(BUFFER_SIZE, request.size() + 1)) {
+                        ssize_t sended = send(sock, request.data() + all_sended, BUFFER_SIZE, 0);
+                        if (sended == -1) {
+                            perror("send");
+                            throw std::runtime_error("Can't send response");
+                        }
+                        all_sended += sended;
+                    }
+
+                } else {
+                    if (all_received == -1) {
+                        perror("recv");
+                        break;
+                    } else if (all_received == 0) {
                         std::cout << "Disconnection" << std::endl;
+                        break;
                     }
                     if (epoll_ctl(epollfd, EPOLL_CTL_DEL, sock, nullptr) == -1) {
                         close(sock);
