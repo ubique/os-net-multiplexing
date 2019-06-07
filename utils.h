@@ -1,5 +1,5 @@
-#include <stdio.h>    // fprintf, stderr
-#include <stdlib.h>   // free
+#include <stdio.h>  // fprintf, stderr
+#include <stdlib.h> // free
 
 #include "common.h"
 
@@ -30,4 +30,3 @@ cleanup_mem(void *pmem) {
 
 int
 get_open_max();
-

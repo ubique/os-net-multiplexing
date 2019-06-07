@@ -1,12 +1,12 @@
 #include "utils.h"
 
-#include <errno.h>    // errno
-#include <unistd.h>   // sysconf
-#include <string.h>   // strerror
+#include <errno.h>  // errno
+#include <string.h> // strerror
+#include <unistd.h> // sysconf
 
 int
 get_open_max() {
-    errno = 0;
+    errno        = 0;
     int open_max = sysconf(_SC_OPEN_MAX);
     if (open_max == -1) {
         if (errno == 0) {
@@ -18,4 +18,3 @@ get_open_max() {
     }
     return open_max;
 }
-

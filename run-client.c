@@ -3,7 +3,7 @@
 #include "common.h"
 #include "utils.h"
 
-#define PRINT_USAGE()                                                       \
+#define PRINT_USAGE() \
     fprintf(stderr, "USAGE: %s message server-address [port]", argv[0]);
 
 char const *
@@ -18,10 +18,10 @@ main(int argc, char *argv[]) {
         PRINT_USAGE();
         exit(EXIT_FAILURE);
     }
-    unsigned arg = 0;
-    char const *message = argv[++arg];
+    unsigned arg            = 0;
+    char const *message     = argv[++arg];
     char const *server_node = argv[++arg];
-    char const *port = arg_or_default(argc, argv, ++arg, DEFAULT_PORT);
+    char const *port        = arg_or_default(argc, argv, ++arg, DEFAULT_PORT);
 
     struct cmn_peer *SCOPED_PEER client = cmn_peer_create(server_node, port);
     char buf[PACKET_SIZE + 1];
@@ -32,7 +32,7 @@ main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
     assert(buf_len < PACKET_SIZE + 1);
-    buf[buf_len] = '\0';
+    assert(buf[buf_len] == '\0');
 
     printf("sent: '%s', received: '%s'\n", message, buf);
 }
