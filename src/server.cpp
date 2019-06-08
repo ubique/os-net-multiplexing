@@ -1,3 +1,4 @@
+#include "rwutils.h"
 #include <arpa/inet.h>
 #include <fcntl.h>
 #include <iostream>
@@ -5,8 +6,8 @@
 #include <string>
 #include <sys/epoll.h>
 #include <unistd.h>
+#include <unordered_map>
 
-static const size_t BUFFER_SIZE = 4096;
 static const size_t MAX_EVENTS = 1024;
 
 struct fd_wrapper {
@@ -25,7 +26,8 @@ struct fd_wrapper {
     }
 };
 
-void run(std::string const &address, std::string const &port_representation)
+[[noreturn]] void run(std::string const &address,
+                      std::string const &port_representation)
 {
     int port = stoi(port_representation);
     fd_wrapper server_socket(socket(AF_INET, SOCK_STREAM, 0));
@@ -58,13 +60,14 @@ void run(std::string const &address, std::string const &port_representation)
         throw std::runtime_error("Cannot add into epoll ctl");
     }
 
-    char message_buffer[BUFFER_SIZE];
+    std::unordered_map<int, message_handler> handlers;
+
     while (true) {
-        int available = epoll_wait(epollfd, events, MAX_EVENTS, -1);
-        if (available == -1) {
+        int availavle = epoll_wait(epollfd, events, MAX_EVENTS, -1);
+        if (availavle == -1) {
             throw std::runtime_error("Waiting failed");
         }
-        for (int i = 0; i < available; ++i) {
+        for (int i = 0; i < availavle; ++i) {
             if (events[i].data.fd == server_socket) {
                 struct sockaddr_in client;
                 size_t socket_size = sizeof(struct sockaddr_in);
@@ -77,10 +80,11 @@ void run(std::string const &address, std::string const &port_representation)
                         << std::endl;
                     continue;
                 }
+                handlers[client_socket] = message_handler();
                 std::cout << "Connected" << std::endl;
                 int flags = fcntl(client_socket, F_GETFL, 0);
                 fcntl(client_socket, F_SETFL, flags | O_NONBLOCK);
-                main_event.events = EPOLLIN | EPOLLET;
+                main_event.events = EPOLLIN;
                 main_event.data.fd = client_socket;
                 if (epoll_ctl(epollfd, EPOLL_CTL_ADD, client_socket,
                               &main_event) == -1) {
@@ -93,31 +97,26 @@ void run(std::string const &address, std::string const &port_representation)
                 }
             } else {
                 int client_socket = events[i].data.fd;
-                ssize_t read_size =
-                    recv(client_socket, message_buffer, BUFFER_SIZE, 0);
-                if (read_size <= 0) {
-                    if (read_size == -1) {
-                        std::cerr << "Could not read: " << strerror(errno)
-                                  << std::endl;
-                    }
-                    std::cout << "Disconnected" << std::endl;
-                    if (epoll_ctl(epollfd, EPOLL_CTL_DEL, client_socket,
-                                  nullptr) == -1) {
+                dummy_optional result =
+                    handlers[client_socket].read(client_socket);
+                if (result.is_valid) {
+                    if (result.value.empty()) {
+                        std::cout << "Disconnected" << std::endl;
+                        handlers.erase(client_socket);
+                        if (epoll_ctl(epollfd, EPOLL_CTL_DEL, client_socket,
+                                      nullptr) == -1) {
+                            std::cout << strerror(errno) << std::endl;
+                        }
                         if (close(client_socket) == -1) {
                             std::cerr << "Close failed: " << strerror(errno)
                                       << std::endl;
                         }
+                    } else {
+                        std::cout << "[RECEIVED from " << client_socket << "] "
+                                  << result.value << std::endl;
+                        handlers[client_socket].write(client_socket,
+                                                      result.value);
                     }
-                    continue;
-                }
-                std::cout << "[RECEIVED] "
-                          << std::string{message_buffer,
-                                         static_cast<size_t>(read_size)}
-                          << std::endl;
-                if (write(client_socket, message_buffer,
-                          static_cast<size_t>(read_size)) == -1) {
-                    std::cerr << "Could not write response: " << strerror(errno)
-                              << std::endl;
                 }
             }
         }

@@ -1,3 +1,4 @@
+#include "rwutils.h"
 #include <arpa/inet.h>
 #include <fcntl.h>
 #include <iostream>
@@ -27,7 +28,6 @@ struct fd_wrapper {
 void run(std::string const &address, std::string const &port_representation)
 {
     struct sockaddr_in server;
-    char server_reply[BUFFER_SIZE];
     int port = stoi(port_representation);
 
     fd_wrapper socket_fd(socket(AF_INET, SOCK_STREAM, 0));
@@ -65,6 +65,8 @@ void run(std::string const &address, std::string const &port_representation)
 
     std::string query;
     bool live = true;
+    auto handler = message_handler();
+
     while (live) {
         int available = epoll_wait(epollfd, events, MAX_EVENTS, -1);
         if (available == -1) {
@@ -73,19 +75,14 @@ void run(std::string const &address, std::string const &port_representation)
 
         for (int i = 0; i < available; ++i) {
             if (events[i].data.fd == socket_fd) {
-                ssize_t received =
-                    recv(socket_fd, server_reply, BUFFER_SIZE, 0);
-                if (received < 0) {
-                    throw std::runtime_error(
-                        "Error while receiving data from server");
+                dummy_optional result = handler.read(socket_fd);
+                if (result.is_valid) {
+                    if (result.value.empty()) {
+                        live = false;
+                        continue;
+                    }
+                    std::cout << result.value << std::endl;
                 }
-                if (received == 0) {
-                    live = false;
-                    continue;
-                }
-                std::cout << std::string{server_reply,
-                                         static_cast<size_t>(received)}
-                          << std::endl;
             }
             if (events[i].data.fd == 0) {
                 getline(std::cin, query);
@@ -93,10 +90,7 @@ void run(std::string const &address, std::string const &port_representation)
                     live = false;
                     continue;
                 }
-                if (send(socket_fd, query.data(), query.size(), 0) == -1) {
-                    throw std::runtime_error(
-                        "Error while sending data to server");
-                }
+                handler.write(socket_fd, query);
             }
         }
     }
@@ -105,7 +99,7 @@ void run(std::string const &address, std::string const &port_representation)
 static const std::string greeting =
     R"BLOCK(
 Echo client with reading stdin and listening to server via epoll.
-Usage: client [address [port]]
+Usage: server [address [port]]
 Default address is 127.0.0.1
 Default port is 8888
 You can send messages and get them back.
