@@ -19,11 +19,16 @@ const std::string HELP = R"SEQ(Usage:
     -exit                       - exit client
 )SEQ";
 
-static const size_t MAX_EVENTS = 2;
-const size_t BUF_SIZE = 1 << 11;
+const size_t MAX_EVENTS = 2;
+const size_t MAX_LEN_MESSAGE = 1 << 8;
 
-void error(std::string message, bool help = false, bool need_exit = false) {
-    std::cerr << message << ". " << strerror(errno) << "." << std::endl;
+void error(const std::string &message, bool with_errno = true, bool help = false, bool need_exit = false) {
+    std::cerr << message;
+    
+    if (with_errno) {
+        std::cerr << ". " << strerror(errno);
+    }
+    std::cerr << std::endl;
 
     if (help) {
         std::cerr << HELP << std::endl;
@@ -40,7 +45,7 @@ struct client {
     void run();
 
   private:
-    sockaddr_in socket_addr;
+    sockaddr_in socket_addr{};
     fd_wrapper socket_client_fd;
 };
 

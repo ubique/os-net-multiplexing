@@ -1,9 +1,12 @@
+#include <utility>
+
 #ifndef OS_NET_MULTIPLEXING_SERVER_H
 #define OS_NET_MULTIPLEXING_SERVER_H
 
 #include <iostream>
-#include <cstring>
 #include <vector>
+#include <queue>
+#include <cstring>
 #include <errno.h>
 #include <arpa/inet.h>
 
@@ -19,14 +22,26 @@ const std::string HELP = R"SEQ(Usage:
     <address> <port>			- address and port, default address = 127.0.0.1, port = 10005
 )SEQ";
 
-const size_t BUF_SIZE = 1 << 10;
 static const size_t EVENTS = 1 << 10;
 
-void error(std::string message, bool with_errno = true, bool help = false, bool need_exit = false) {
-    std::cerr << message << ". ";
-    
+struct data {
+    int fd;
+    int ind;
+
+    size_t message_length;
+    size_t message_length_read;
+    std::string message;
+
+    data() = default;
+
+    data(int fd, int ind) : fd(fd), ind(ind), message_length(0), message_length_read(0), message("") {}
+};
+
+void error(const std::string &message, bool with_errno = true, bool help = false, bool need_exit = false) {
+    std::cerr << message;
+
     if (with_errno) {
-        std::cerr << strerror(errno) << ".";
+        std::cerr << ". " << strerror(errno);
     }
     std::cerr << std::endl;
 
@@ -40,16 +55,16 @@ void error(std::string message, bool with_errno = true, bool help = false, bool 
 }
 
 struct server {
-    explicit server(const char* address, const char* port);
+    explicit server(const char *address, const char *port);
 
     void run();
 
 private:
-    sockaddr_in socket_addr;
+    sockaddr_in socket_addr{};
     fd_wrapper socket_fd;
 };
 
-int main(int argc, char* argv[]);
+int main(int argc, char *argv[]);
 
 #endif // OS_NET__MULTIPLEXING_SERVER_H
 
