@@ -2,8 +2,6 @@
 
 #include <sys/epoll.h>
 
-unsigned int const fd_wrapper::EPOLL_MAX_EVENTS = 10;
-
 fd_wrapper::fd_wrapper() : descriptor(socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0)) {}
 
 fd_wrapper::fd_wrapper(int descriptor) : descriptor(descriptor) {}

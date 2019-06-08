@@ -37,7 +37,7 @@ void client::connect(std::string const &address, uint16_t port) {
     server_address.sin_addr.s_addr = inet_addr(address.c_str());
 
     if (::connect(socket_desc.get_fd(),
-                  reinterpret_cast<sockaddr *>(&server_address), sizeof(sockaddr_in)) < 0) {
+                  reinterpret_cast<sockaddr *>(&server_address), sizeof(sockaddr_in)) < 0 && errno != EINPROGRESS) {
         logger().fail("Failed to open socket connection", errno);
         return;
     }
