@@ -62,7 +62,6 @@ void client::disconnect() {
 }
 
 int main(int argc, char *argv[]) {
-
     if (argc != 1) {
         logger().fail("Zero arguments expected");
         std::cout << USAGE << std::endl;

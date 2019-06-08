@@ -47,7 +47,6 @@ int fd_wrapper::send_message(char const *buf, size_t buffer_size, bool log_succe
     }
 
     size_t offset = 0;
-    ssize_t sent;
     while (true) {
         int count = epoll_wait(epoll_desc.get_fd(), events, EPOLL_MAX_EVENTS, -1);
         if (count < 0) {
@@ -57,13 +56,10 @@ int fd_wrapper::send_message(char const *buf, size_t buffer_size, bool log_succe
 
         for (unsigned int i = 0; i < count; i++) {
             if (events[i].data.fd == descriptor && (events[i].events & EPOLLOUT)) {
-                sent = send(descriptor, reinterpret_cast<void const *>(buf + offset), buffer_size - offset, 0);
-                if (sent == -1) {
-                    logger().fail("Failed to send a message via connection", errno);
+                int status = send_next(buf, buffer_size, offset);
+                if (status < 0) {
                     return -1;
-                }
-                offset += sent;
-                if (offset == buffer_size) {
+                } else if (status == 0) {
                     if (log_success) {
                         logger().success("Sent '" + std::string(buf, offset - 1) +
                                          "' of size " + std::to_string(buffer_size));
@@ -97,7 +93,6 @@ int fd_wrapper::receive_message(char *buf, size_t &buffer_size, unsigned int rea
     }
 
     size_t offset = 0;
-    ssize_t received;
     while (true) {
         int count = epoll_wait(epoll_desc.get_fd(), events, EPOLL_MAX_EVENTS, -1);
         if (count < 0) {
@@ -107,15 +102,10 @@ int fd_wrapper::receive_message(char *buf, size_t &buffer_size, unsigned int rea
 
         for (unsigned int i = 0; i < count; i++) {
             if (events[i].data.fd == descriptor && (events[i].events & EPOLLIN)) {
-                received = recv(descriptor, reinterpret_cast<void *>(buf + offset), real_size - offset, 0);
-                if (received == -1) {
-                    logger().fail("Failed to receive a message via connection", errno);
+                int status = receive_next(buf, buffer_size, real_size, offset);
+                if (status < 0) {
                     return -1;
-                }
-                offset += received;
-                if (buf[offset - 1] == '\n') {
-                    buf[offset - 1] = '\0';
-                    buffer_size = offset - 1;
+                } else if (status == 0) {
                     if (log_success) {
                         logger().success("Received '" + std::string(buf) + "' of size " + std::to_string(offset));
                     }
@@ -131,4 +121,71 @@ void fd_wrapper::close() {
         logger().fail("Could not close the socket properly", errno);
     }
     descriptor = -1;
+}
+
+int fd_wrapper::send_next(char const *buf, size_t buffer_size, size_t &offset) {
+    ssize_t sent = send(descriptor, reinterpret_cast<void const *>(buf + offset), buffer_size - offset, 0);
+    if (sent == -1) {
+        logger().fail("Failed to send a message via connection", errno);
+        return -1;
+    }
+    offset += sent;
+    if (offset == buffer_size) {
+        return 0;
+    }
+    return 1;
+}
+
+int fd_wrapper::receive_next(char *buf, size_t &buffer_size, unsigned int real_size, size_t &offset) {
+    ssize_t received = recv(descriptor, reinterpret_cast<void *>(buf + offset), real_size - offset, 0);
+    if (received == -1) {
+        logger().fail("Failed to receive a message via connection", errno);
+        return -1;
+    }
+    offset += received;
+    if (buf[offset - 1] == '\n') {
+        buf[offset - 1] = '\0';
+        buffer_size = offset - 1;
+        return 0;
+    }
+    return 1;
+}
+
+int fd_wrapper::simple_send_message(char const *buf, size_t buffer_size, bool log_success) {
+    if (!check_valid()) {
+        logger().fail("Socket descriptor is invalid, can not sent message");
+        return -1;
+    }
+    size_t offset = 0;
+    while (true) {
+        int status = send_next(buf, buffer_size, offset);
+        if (status < 0) {
+            return -1;
+        } else if (status == 0) {
+            if (log_success) {
+                logger().success("Sent '" + std::string(buf, offset - 1) +
+                                 "' of size " + std::to_string(buffer_size));
+            }
+            return 0;
+        }
+    }
+}
+
+int fd_wrapper::simple_receive_message(char *buf, size_t &buffer_size, unsigned int real_size, bool log_success) {
+    if (!check_valid()) {
+        logger().fail("Socket descriptor is invalid, can not receive message");
+        return -1;
+    }
+    size_t offset = 0;
+    while (true) {
+        int status = receive_next(buf, buffer_size, real_size, offset);
+        if (status < 0) {
+            return -1;
+        } else if (status == 0) {
+            if (log_success) {
+                logger().success("Received '" + std::string(buf) + "' of size " + std::to_string(offset));
+            }
+            return 0;
+        }
+    }
 }
