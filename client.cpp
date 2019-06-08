@@ -1,10 +1,11 @@
 #include "utils.h"
 #include <cstring>
+#include <stdexcept>
 
 void resolve(const std::string& addr, const std::string& port) {
     int sockfd;
     struct sockaddr_in server;
-    utils::init(sockfd, server, addr, port);
+    utils::init(sockfd, server, addr, port, SOCK_STREAM);
     utils::connect(sockfd, server);
     printf("Connected to server\n");
     while (true) {
