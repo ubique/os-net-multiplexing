@@ -3,6 +3,7 @@
 #include <strings.h>
 #include <sys/epoll.h>
 #include "file_descriptor.h"
+#include "utils.h"
 
 size_t const MAX_EPOLL_EVENTS = 100;
 size_t const BUFFER_SIZE = 1000;
@@ -10,18 +11,6 @@ size_t const BUFFER_SIZE = 1000;
 void error(std::string const &message) {
     perror(message.data());
     exit(EXIT_FAILURE);
-}
-
-int send_message(std::string const &message, int fd) {
-    size_t sended = 0;
-    while (sended < message.size()) {
-        ssize_t curr_portion = send(fd, message.data(), message.length(), 0);
-        if (curr_portion == -1) {
-            return -1;
-        }
-        sended += curr_portion;
-    }
-    return 1;
 }
 
 int main(int argc, char *argv[]) {
@@ -95,10 +84,7 @@ int main(int argc, char *argv[]) {
         for (int i = 0; i < ready; i++) {
             int currFd = events[i].data.fd;
             if (currFd == fd) {
-                if (send_message(message, fd) == -1) {
-                    error("Can't send");
-                }
-                break;
+                send_message(message, fd);
             }
         }
 
@@ -116,7 +102,7 @@ int main(int argc, char *argv[]) {
             int currFd = events[i].data.fd;
 
             if (currFd == fd) {
-                ssize_t len = recv(fd, buffer, BUFFER_SIZE, 0);
+                ssize_t len = receive_message(fd,buffer, BUFFER_SIZE);//recv(fd, buffer, BUFFER_SIZE, 0);
                 if (len == -1) {
                     perror("Can't read response.");
                     continue;

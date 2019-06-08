@@ -9,6 +9,7 @@
 #include <sys/epoll.h>
 #include <fcntl.h>
 #include "file_descriptor.h"
+#include "utils.h"
 
 const size_t EPOLL_SIZE = 10;
 const size_t BUFFER_SIZE = 100;
@@ -106,7 +107,7 @@ int main(int argc, char *argv[]) {
                 }
             } else {
                 bzero(buffer, BUFFER_SIZE);
-                ssize_t len = recv(currFd, buffer, BUFFER_SIZE, 0);
+                ssize_t len = receive_message(currFd, buffer, BUFFER_SIZE);//recv(currFd, buffer, BUFFER_SIZE, 0);
                 if (len == -1) {
                     perror("Can't receive a message");
                     continue;
@@ -123,15 +124,7 @@ int main(int argc, char *argv[]) {
 
                 message = hello + message;
 
-                int written = 0;
-                while (written < message.size()) {
-                    int currWrtitten = write(currFd, message.data(), message.size());
-                    if (currWrtitten == -1) {
-                        perror("Can't send message.");
-                        continue;
-                    }
-                    written += currWrtitten;
-                }
+                send_message(message, currFd);
             }
         }
     }
