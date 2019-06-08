@@ -94,11 +94,14 @@ cmn_listen(struct cmn_peer *server) {
     }
 
     struct msg_info {
-        size_t buf_len;
+        size_t read_pos;
+        size_t sent_pos;
+        bool reading_finished;
         char buf[PACKET_SIZE + 1]; // + 1 for zero-terminator
     };
     struct msg_info *SCOPED_MEM infos = calloc(pfds_cap, sizeof(struct msg_info));
     ssize_t nread;
+    ssize_t nsent;
     while (true) {
         rc = poll(pfds, pfds_len, -1);
         if (rc == -1) {
@@ -106,6 +109,7 @@ cmn_listen(struct cmn_peer *server) {
             return -1;
         }
         if (pfds[0].revents & POLLIN) {
+            printf("new connection\n");
             int connfd = accept(server->sfd, NULL, NULL);
             if (connfd == -1) {
                 printf("failed to accept connection, continuing…\n");
@@ -128,37 +132,58 @@ cmn_listen(struct cmn_peer *server) {
             if (pfds[i].fd < 0) {
                 continue;
             }
-            if (pfds[i].revents == POLLIN) {
-                char *buf       = infos[i].buf;
-                size_t *buf_len = &infos[i].buf_len;
-                nread           = read(pfds[i].fd, infos[i].buf + *buf_len, PACKET_SIZE - *buf_len);
-                *buf_len += nread;
-                if (nread == -1) {
-                    printf("read failed: %s\n", strerror(errno));
-                } else if (nread == 0 || *buf_len == PACKET_SIZE || buf[*buf_len - 1] == '\0') {
-                    if (*buf_len == PACKET_SIZE && buf[*buf_len - 1] != '\0') {
-                        printf("%u bytes received, rejecting remainder (if any)", PACKET_SIZE);
+            char *buf        = infos[i].buf;
+            size_t *read_pos = &infos[i].read_pos;
+            size_t *sent_pos = &infos[i].sent_pos;
+            if (pfds[i].revents & POLLIN) {
+                nread = read(pfds[i].fd, buf + *read_pos, PACKET_SIZE - *read_pos);
+                *read_pos += nread;
+                pfds[i].events |= POLLOUT;
+                bool read_failed = nread == -1;
+                bool eof_reached = nread == 0 || *read_pos == PACKET_SIZE || buf[*read_pos - 1] == '\0';
+                if (read_failed || eof_reached) {
+                    infos[i].reading_finished = true;
+                    pfds[i].events            = POLLOUT;
+                    if (read_failed) {
+                        printf("read failed: %s\n", strerror(errno));
+                    } else {
+                        assert(eof_reached);
+                        if (*read_pos == PACKET_SIZE && buf[*read_pos - 1] != '\0') {
+                            printf("%u bytes received, rejecting remainder (if any)", PACKET_SIZE);
+                        }
+                        buf[*read_pos] = '\0';
+                        printf("received: %s\n", buf);
                     }
-                    buf[*buf_len] = '\0';
-                    printf("received: %s", buf);
-                    write(pfds[i].fd, buf, nread); // echo!
-                } else {
-                    continue;
-                }
-            } else {
-                if (pfds[i].revents & POLLHUP) {
-                    printf("client closed its end of channel\n");
-                } else if (pfds[i].revents & POLLNVAL) {
-                    printf("invalid request, fd not open\n");
-                } else if (pfds[i].revents & POLLERR) {
-                    printf("error condition\n");
-                } else {
-                    continue;
                 }
             }
-            close(pfds[i].fd);
-            pfds[i].fd       = -1;
-            infos[i].buf_len = 0;
+            if (pfds[i].revents & POLLOUT) {
+                if (infos[i].sent_pos < infos[i].read_pos) {
+                    nsent = send(pfds[i].fd, buf + *sent_pos, *read_pos - *sent_pos, 0);
+                    if (nsent == -1) {
+                        fprintf(stderr, "send failed: %s\n", strerror(errno));
+                        return -1;
+                    }
+                    *sent_pos += nsent;
+                }
+            }
+            bool has_error = true;
+            if (pfds[i].revents & POLLHUP) {
+                printf("client closed its end of channel\n");
+            } else if (pfds[i].revents & POLLNVAL) {
+                printf("invalid request, fd not open\n");
+            } else if (pfds[i].revents & POLLERR) {
+                printf("error condition\n");
+            } else {
+                has_error = false;
+            }
+            bool sending_finished = *read_pos == *sent_pos && infos[i].reading_finished;
+            if (sending_finished || has_error) {
+                close(pfds[i].fd);
+                pfds[i].fd                = -1;
+                infos[i].read_pos         = 0;
+                infos[i].sent_pos         = 0;
+                infos[i].reading_finished = false;
+            }
         }
     }
 }
@@ -168,57 +193,25 @@ cmp_exchange(struct cmn_peer *client, char const *message, char buf[static PACKE
     int rc;
     rc                   = connect(client->sfd, (struct sockaddr const *)&client->peer_addr, client->peer_addr_len);
     struct pollfd pfds[] = {{.fd = client->sfd, .events = POLLOUT}};
+    size_t msg_len       = strlen(message) + 1;
+    size_t sent_pos      = 0;
     if (rc == -1) {
         if (errno != EINPROGRESS) {
             fprintf(stderr, "failed to connect: %s\n", strerror(errno));
             return -1;
         }
         printf("waiting for connect completion\n");
-        while (true) {
-            rc = poll(pfds, 1, 0);
-            if (rc == -1) {
-                fprintf(stderr, "poll failed: %s\n", strerror(errno));
-                return -1;
-            }
-            assert(rc == 1);
-            if (pfds[0].revents & POLLHUP) {
-                printf("server closed its end of channel\n");
-                return -1;
-            } else if (pfds[0].revents & POLLNVAL) {
-                printf("invalid request, fd not open\n");
-                return -1;
-            } else if (pfds[0].revents & POLLERR) {
-                printf("error condition\n");
-                return -1;
-            }
-            if (pfds[0].revents & POLLOUT) {
-                int error         = 0;
-                socklen_t err_len = sizeof(error);
-                if (getsockopt(client->sfd, SOL_SOCKET, SO_ERROR, &error, &err_len) == -1) {
-                    printf("getsockopt failed: %s\n", strerror(errno));
-                    return -1;
-                }
-                if (error == 0) {
-                    printf("connected!\n");
-                    sleep(3);
-                    rc = write(client->sfd, message, strlen(message) + 1);
-                    if (rc == -1) {
-                        printf("write failed: %s\n", strerror(errno));
-                    }
-                    break;
-                }
-            }
-        }
     }
-    pfds[0].events = POLLIN;
-    rc             = poll(pfds, 1, -1);
-    if (rc == -1) {
-        fprintf(stderr, "poll failed: %s\n", strerror(errno));
-        return -1;
-    }
-    assert(rc == 1);
-    *buf_len = 0;
+    pfds[0].events        = POLLIN | POLLOUT;
+    *buf_len              = 0;
+    bool reading_finished = false;
     while (true) {
+        rc = poll(pfds, 1, -1);
+        if (rc == -1) {
+            fprintf(stderr, "poll failed: %s\n", strerror(errno));
+            return -1;
+        }
+        assert(rc == 1);
         if (pfds[0].revents & POLLHUP) {
             printf("server closed its end of channel\n");
             return -1;
@@ -240,11 +233,42 @@ cmp_exchange(struct cmn_peer *client, char const *message, char buf[static PACKE
                 return -1;
             } else if (nread == 0 || *buf_len == PACKET_SIZE || buf[*buf_len - 1] == '\0') {
                 if (*buf_len == PACKET_SIZE && buf[*buf_len - 1] != '\0') {
-                    printf("%u bytes received, rejecting remainder (if any)", PACKET_SIZE);
+                    printf("%u bytes received, rejecting remainder (if any)\n", PACKET_SIZE);
                 }
-                buf[*buf_len] = '\0';
-                return 0;
+                buf[*buf_len]    = '\0';
+                reading_finished = true;
+                pfds[0].events   = POLLOUT;
             }
+        }
+        if (pfds[0].revents & POLLOUT) {
+            if (sent_pos == 0) {
+                int error         = 0;
+                socklen_t err_len = sizeof(error);
+                if (getsockopt(pfds[0].fd, SOL_SOCKET, SO_ERROR, &error, &err_len) == -1) {
+                    printf("getsockopt failed: %s\n", strerror(errno));
+                    return -1;
+                }
+                if (error == 0) {
+                    printf("connected!\n");
+                    sleep(3);
+                } else {
+                    fprintf(stderr, "failed to connect\n");
+                    return -1;
+                }
+            }
+            ssize_t nsent;
+            nsent = send(pfds[0].fd, message + sent_pos, msg_len - sent_pos, 0);
+            if (nsent == -1) {
+                fprintf(stderr, "send failed: %s\n", strerror(errno));
+                return -1;
+            }
+            sent_pos += nsent;
+            if (sent_pos == msg_len) {
+                pfds[0].revents = POLLIN;
+            }
+        }
+        if (sent_pos == msg_len && reading_finished) {
+            return 0;
         }
     }
 }
