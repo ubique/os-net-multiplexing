@@ -1,21 +1,39 @@
-# Знакомство с мультиплексированием
+# Basic SNTP-like client and server with multiplexing
 
-Необходимо попробовать клиент-серверное взаимодействие с использованием механизмов мультиплексирования.
-Помимо этого нужен Makefile, с помощью которого можно будет собрать клиент и сервер.
-Семейство протоколов для использования на выбор: AF_UNIX, AF_INET, AF_INET6.
+## Goal
+This is an educational project, aimed at understanding how to interact with
+platform-specific multiplexing APIs (epoll, kqueue) to implement a more performant client-server architecture.
 
-## Сервер должен:
- * В качестве аргументов принимать адрес, на котором будет ожидать входящих соединений
- * Стартовать, делать bind(2) на заданный адрес и ожидать входящих соединений с использованием одного из механизмов мультиплексирования
- * При получении соединения, добавлять дескриптор в механизм мультиплексирования и ожидать событий и на нем
- * Выполнять на принятых соединениях серверную часть протокола
- * По завершении обработки соединения удалять все события из механизмов мультиплексирования
+## Features:
+* A client that requests timestamp seconds
+* A server which sends system time in response
+* Both are IPv4 & IPv6 compatible and use multiplexing
 
-## Клиент должен:
- * Принимать параметром адрес, к которому стоит подключиться
- * Используя механизмы мультиплексирования подключаться к серверу
- * Используя механизмы мультиплексирования выполнять клиентскую часть протокола
- * Завершаться
+## Building
+```
+$ mkdir build
+$ cd build
+$ cmake ..
+$ make
+```
 
-Для сильных духом предлагается реализовать код, который будет работать на двух разных ОС, используя на каждой специфичные механизмы мультиплексирования.
-Сильность духа будет оцениваться в два балла.
+Requires a C++14 compiler.
+
+## Usage
+**Server:**  
+`ntp-server [<port number>]`  
+E.g. `./ntp-server 8080`
+
+**Client:**  
+`ntp-client [<server hostname or address> [<server port>]]`  
+E.g. `./ntp-client localhost 8080`, `ntp-client`
+Available commands are `ask` and `quit`.
+
+## Testing
+Tested by hand on Linux 4.12 and FreeBSD 12.0.
+
+## Copyright
+Ilya Bizyaev, 2019 (<me@ilyabiz.com>)
+
+Licensed under MIT terms.
+
