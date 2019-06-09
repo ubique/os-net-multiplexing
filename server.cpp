@@ -22,7 +22,7 @@ using std::cout;
 using std::cerr;
 using std::string;
 
-server::server(): tcp_socket(socket(AF_INET, SOCK_STREAM, 0)) {
+server::server(): tcp_socket(socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0)) {
     memset(buffer, 0, BUFFER_SIZE + 1);
     if (tcp_socket == -1) {
         my_error("Socket cannot be created");
@@ -80,9 +80,7 @@ void server::start(const char *hostAddress, const in_port_t port) {
                     continue;
                 }
                 std::cout << "[INFO] Client connected" << std::endl;
-                int flags = fcntl(client_fd, F_GETFL, 0);
-                fcntl(client_fd, F_SETFL, flags | O_NONBLOCK);
-                ev.events = EPOLLIN | EPOLLET;
+                ev.events = EPOLLIN;
                 ev.data.fd = client_fd;
                 if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, client_fd, &ev) == -1) {
                     my_error("Cannot invoke epoll_ctl on this client");
@@ -92,10 +90,10 @@ void server::start(const char *hostAddress, const in_port_t port) {
                 }
             } else {
                 int client_fd = events[i].data.fd;
-                ssize_t readed = read(client_fd, buffer, BUFFER_SIZE); // yeah, english vse dela read read
+                ssize_t readed = receive_request(client_fd); // yeah, english vse dela read read
                 if (readed <= 0) {
                     if (readed == -1) {
-                        my_error("Cannot read request");
+                        my_error("Cannot read request2");
                     }
                     std::cout << "[INFO] Client disconnected" << std::endl;
                     if (epoll_ctl(epoll_fd, EPOLL_CTL_DEL, client_fd, nullptr) == -1) {
@@ -106,14 +104,63 @@ void server::start(const char *hostAddress, const in_port_t port) {
                     continue;
                 }
                 std::cout << "[REQUEST] " << std::string(buffer, readed) << std::endl;
-                ssize_t sent = send(client_fd, buffer, readed, 0);
-                if (sent != readed) {
-                    cerr << "[ERROR] Cannot send full response" << std::endl;
-                    if (sent == -1) {
-                        my_error("Error during sending response");
-                    }
-                }
+                response(client_fd, readed);
             }
         }
     }
+}
+
+
+void server::response(int client_fd, ssize_t count) {
+    {
+        ssize_t sent = 0;
+        while (sent != sizeof(ssize_t)) {
+            ssize_t written = write(client_fd, (char*)(&count) + sent, sizeof(ssize_t) - sent);
+            if (written == -1) {
+                my_error("Cannot response3");
+                return;
+            }
+            sent += written;
+        }
+    }
+    {
+        ssize_t sent = 0;
+        while (sent != count) {
+            ssize_t written = write(client_fd, buffer + sent, count - sent);
+            if (written == -1) {
+                my_error("Cannot response2");
+                return;
+            }
+            sent += written;
+        }
+    }
+}
+
+ssize_t server::receive_request(int client_fd) {
+    ssize_t count = 0;
+    {
+        ssize_t received = 0;
+        while (received != sizeof(ssize_t)) {
+            ssize_t tmp = read(client_fd, (char*)(&count) + received, sizeof(ssize_t) - received);
+            if (tmp == -1 || tmp == 0) {
+                return tmp;
+            }
+            received += tmp;
+        }
+    }
+    if (count == 0) {
+        return 0;
+    }
+    {
+        ssize_t received = 0;
+        while (received != count) {
+            ssize_t tmp = read(client_fd, buffer + received, count - received);
+            if (tmp == -1 || tmp == 0) {
+                my_error("Cannot response1");
+                return -1;
+            }
+            received += tmp;
+        }
+    }
+    return count;
 }

@@ -21,6 +21,9 @@ public:
     void connect_to(const char *hostAddress, const in_port_t port);
 
     void start();
+    ssize_t receive_response();
+    void do_request(const string& msg);
+
 private:
     my_fd tcp_socket;
     static constexpr size_t BUFFER_SIZE = 4096;

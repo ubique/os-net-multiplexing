@@ -76,12 +76,10 @@ void client::start() {
                     flag = false;
                     continue;
                 }
-                if (write(tcp_socket, message.data(), message.size() + 1) == -1) {
-                    my_error("Cannot send message");
-                }
+                do_request(message);
             }
             if (events[i].data.fd == tcp_socket) {
-                ssize_t readed = read(tcp_socket, buffer, BUFFER_SIZE); //read read read...but...
+                ssize_t readed = receive_response(); //read read read...but...
                 if (readed < 0) {
                     my_error("Error while receiving data from server");
                 }
@@ -95,3 +93,59 @@ void client::start() {
     }
 }
 
+ssize_t client::receive_response() {
+    ssize_t count = 0;
+    {
+        ssize_t received = 0;
+        while (received != sizeof(ssize_t)) {
+            ssize_t tmp = read(tcp_socket, (char*)(&count) + received, sizeof(ssize_t) - received);
+            if (tmp == -1 || tmp == 0) {
+//                my_error("Cannot response");
+                return tmp;
+            }
+            received += tmp;
+        }
+    }
+    {
+        ssize_t received = 0;
+        while (received != count) {
+            ssize_t tmp = read(tcp_socket, buffer + received, count - received);
+            if (tmp == -1 || tmp == 0) {
+//                my_error("Cannot response");
+                return tmp;
+            }
+            received += tmp;
+        }
+    }
+    return count;
+}
+
+void client::do_request(const string &msg){
+    ssize_t count = msg.length() + 1;
+    {
+        ssize_t sent = 0;
+        while (sent != sizeof(ssize_t)) {
+            ssize_t written = write(tcp_socket, (char*)(&count) + sent, sizeof(ssize_t) - sent);
+            if (written == -1) {
+                my_error("Cannot do request");
+                return;
+            }
+            sent += written;
+        }
+    }
+    {
+        ssize_t sent = 0;
+        while (sent != count) {
+            ssize_t written = write(tcp_socket, msg.data() + sent, count - sent);
+            if (written == -1) {
+                my_error("Cannot response");
+                return;
+            }
+            sent += written;
+        }
+    }
+
+//    if (send(socket_fd, .data(), message.length() + 1, 0) != message.length() + 1) { //+1 for null terminal
+//        my_error("Cannot send message");
+//    }
+}

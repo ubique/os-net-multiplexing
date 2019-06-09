@@ -22,6 +22,8 @@ public:
 
     void start(const char*, const in_port_t);
 private:
+    ssize_t receive_request(int client_fd);
+    void response(int client_fd, ssize_t count);
     static constexpr size_t BUFFER_SIZE = 4096;
     my_fd tcp_socket;
     char buffer[BUFFER_SIZE]; //for null terminated string
