@@ -63,58 +63,36 @@ int main(int argc, char *argv[]) {
     utils::check(listen(fd, SOMAXCONN), "in listen");
 
     //let's create epoll descriptor
-    struct epoll_event epoll_event{}, events[CONNECTIONS_TOTAL];
+    struct epoll_event ee{}, events[CONNECTIONS_TOTAL];
     int ed = epoll_create1(0);
-
-    //1
-    epoll_event.events = EPOLLIN;
-    epoll_event.data.fd = 0;
-    utils::check(epoll_ctl(ed, EPOLL_CTL_ADD, 0, &epoll_event), "epoll_ctl");
-
-    //2
-    epoll_event.events = EPOLLIN;
-    epoll_event.data.fd = fd;
-    utils::check(epoll_ctl(ed, EPOLL_CTL_ADD, fd, &epoll_event), "epoll_ctl");
+    int descriptors;
+    utils::add_epoll(ed, 0, &ee);
+    utils::add_epoll(ed, fd, &ee);
 
     //running...
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wmissing-noreturn"
     cout << "Running on port " << port << std::endl;
     while (true) {
-        int descriptors = epoll_wait(ed, events, CONNECTIONS_TOTAL, -1);
+        descriptors = epoll_wait(ed, events, CONNECTIONS_TOTAL, -1);
         utils::check(descriptors, "in epoll_wait", true);
 
         for (int i = 0; i < descriptors; i++) {
-            int descriptor = events[i].data.fd;
-            if (descriptor == fd) {
-                struct sockaddr_in client_addr{};
-                socklen_t address_size = sizeof(client_addr);
-
-                int ad = accept(fd, (struct sockaddr *) &client_addr, &address_size);
-                if (ad == -1) {
-                    perror("bad accept descriptor");
-                    continue;
-                }
-
-                cout << "new connection\n";
-                int flags = fcntl(ad, F_GETFL, 0);
-                fcntl(ad, F_SETFL, flags | O_NONBLOCK);
-
-                epoll_event.events = EPOLLIN | EPOLLET;
-                epoll_event.data.fd = ad;
-                utils::check(epoll_ctl(ed, EPOLL_CTL_ADD, ad, &epoll_event), "in epoll_ctl", true);
+            int e_fd = events[i].data.fd;
+            if (e_fd == fd) {
+                utils::handle_new_connection(fd, ed, &ee);
             } else {
-                utils::receive_msg(&buffer_size, 1, descriptor);
+                utils::receive_msg(&buffer_size, 1, e_fd);
                 buffer.clear();
                 buffer.resize(buffer_size, 0);
-                utils::receive_msg(&buffer[0], buffer_size, descriptor);
+                utils::receive_msg(&buffer[0], buffer_size, e_fd);
                 utils::print_msg(buffer);
 
                 transform_msg(buffer);
-                utils::send_msg(&buffer[0], buffer_size, descriptor);
+                utils::send_msg(&buffer[0], buffer_size, e_fd);
 
-                utils::check(shutdown(descriptor, SHUT_RDWR), "in client descriptor shutdown", true);
-                utils::check(close(descriptor), "in client descriptor close", true);
+                utils::check(shutdown(e_fd, SHUT_RDWR), "in client descriptor shutdown", true);
+                utils::check(close(e_fd), "in client descriptor close", true);
             }
         }
     }

@@ -54,16 +54,8 @@ int main(int argc, char *argv[]) {
     utils::check(connect(fd, (sockaddr *) (&server), sizeof(server)), "in connect");
 
     struct epoll_event epoll_event{}, events[CONNECTIONS_TOTAL];
-
-    //1
-    epoll_event.events = EPOLLIN;
-    epoll_event.data.fd = fd;
-    utils::check(epoll_ctl(ed, EPOLL_CTL_ADD, fd, &epoll_event), "epoll_ctl");
-
-    //2
-    epoll_event.events = EPOLLIN;
-    epoll_event.data.fd = 0;
-    utils::check(epoll_ctl(ed, EPOLL_CTL_ADD, 0, &epoll_event), "epoll_ctl");
+    utils::add_epoll(ed, 0, &epoll_event);
+    utils::add_epoll(ed, fd, &epoll_event);
 
     int descriptors = epoll_wait(ed, events, CONNECTIONS_TOTAL, -1);
     utils::check(descriptors, "in epoll_wait");
