@@ -13,7 +13,7 @@ add_executable(sntp-client-multiplexing
                protocol.h)
 
 target_link_libraries(sntp-client-multiplexing
-                         multiplexer)
+                      multiplexer)
 
 add_executable(sntp-server-multiplexing
                server.cpp
@@ -21,7 +21,7 @@ add_executable(sntp-server-multiplexing
                protocol.h)
 
 target_link_libraries(sntp-server-multiplexing
-                         multiplexer)
+                      multiplexer)
 
 install(TARGETS sntp-client-multiplexing
                 sntp-server-multiplexing

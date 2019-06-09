@@ -34,7 +34,7 @@ Multiplexer::Multiplexer()
         std::error_code ec(errno, std::system_category());
         throw std::system_error(ec, "Failed to create kqueue");
     }
-#endif
+    #endif
 }
 
 Multiplexer::~Multiplexer()
