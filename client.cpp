@@ -103,7 +103,7 @@ void client::run() {
                 } else if (message == "\n" || message == "") {
                     continue;
                 } else if (message == "-help") {
-                    std::cout << HELP << std::end;
+                    std::cout << HELP << std::endl;
                     return;
                 }
 
