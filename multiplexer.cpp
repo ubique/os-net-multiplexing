@@ -64,7 +64,7 @@ void Multiplexer::add_polled(int fd, bool edge_triggered) const
     #ifdef __BSD__
     struct kevent evset;
     EV_SET(&evset, fd, EVFILT_READ, EV_ADD, 0, 0, NULL);
-    if (kevent(kq, &evset, 1, NULL, 0, NULL) == -1) {
+    if (kevent(m_pollfd, &evset, 1, NULL, 0, NULL) == -1) {
         std::error_code ec(errno, std::system_category());
         throw std::system_error(ec, "Failed to add fd to kqueue");
     }
@@ -80,7 +80,7 @@ bool Multiplexer::delete_polled(int fd) const
     #ifdef __BSD__
     struct kevent evset;
     EV_SET(&evset, fd, EVFILT_READ, EV_DELETE, 0, 0, NULL);
-    return kevent(kq, &evset, 1, NULL, 0, NULL) != -1;
+    return kevent(m_pollfd, &evset, 1, NULL, 0, NULL) != -1;
     #endif
 }
 
@@ -105,7 +105,7 @@ std::vector<int> Multiplexer::get_ready() const
     #ifdef __BSD__
     struct kevent evList[32];
 
-    int cnt = kevent(kq, NULL, 0, evList, 32, NULL);
+    int cnt = kevent(m_pollfd, NULL, 0, evList, 32, NULL);
     if (cnt == -1) {
         std::error_code ec(errno, std::system_category());
         throw std::system_error(ec, "Event kqueue failed");
