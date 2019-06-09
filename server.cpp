@@ -15,6 +15,7 @@ void resolve(const std::string& addr, const std::string& port) {
         exit(EXIT_FAILURE);
     }
     printf("Waiting for connections ...\n");
+
     while (true) {
         int nfds = epoll_wait(epoll, events, MAX_EVENTS, -1);
         if (nfds == -1) {
@@ -44,6 +45,10 @@ void resolve(const std::string& addr, const std::string& port) {
                     continue;
                 }
                 printf("Message: %s\n", buffer);
+                if (!utils::send(resultfd, &size, 1)) {
+                    utils::abort(epoll, resultfd);
+                    continue;
+                }
                 if (!utils::send(resultfd, buffer, size)) {
                     utils::abort(epoll, resultfd);
                     continue;
