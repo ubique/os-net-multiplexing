@@ -5,24 +5,31 @@
 #ifndef OS_NET_CLIENT_H
 #define OS_NET_CLIENT_H
 
+#include "lib/epoll_wrapper.h"
+#include "lib/socket_wrapper.h"
+
+#include <atomic>
+#include <memory>
 #include <string>
-#include <sys/socket.h>
-#include <sys/un.h>
 
 class client {
 public:
-    client() = default;
-    client(char* socket_name);
-    ~client();
+    client(char* addr, int port);
+    ~client() = default;
 
-    std::string send(const std::string& message);
+    void start();
+    void stop();
 
 private:
-    struct sockaddr_un address;
-    int data_socket = -1;
-    std::string sock_name;
+    struct sockaddr_in address;
+    std::string server_address;
+    std::atomic_bool down_flag = {false};
 
-    static const size_t BUFFER_SIZE;
+    epoll_wrapper epoll;
+    std::unique_ptr<epoll_event[]> events;
+    socket_wrapper client_socket;
+
+    static const int MAX_EVENTS;
 };
 
 #endif //OS_NET_CLIENT_H

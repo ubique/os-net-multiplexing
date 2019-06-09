@@ -6,30 +6,39 @@
 #define OS_NET_SERVER_H
 
 #include "lib/epoll_wrapper.h"
+#include "lib/socket_wrapper.h"
 
+#include <arpa/inet.h>
+#include <atomic>
 #include <cstdint>
+#include <deque>
 #include <string>
-#include <sys/socket.h>
-#include <sys/un.h>
+#include <memory>
+#include <unordered_map>
+
 
 class server {
 public:
-    server() = default;
-    server(char* socket_name);
-    ~server();
+    server(char* addr, int port);
 
     server(const server& other) = delete;
     server& operator=(const server& other) = delete;
 
     void start();
+    void stop();
 
 private:
-    struct sockaddr_un address;
-    int connection_socket = -1;
-    bool down_flag = false;
-    std::string sock_name;
+    struct sockaddr_in address;
+    std::atomic_bool down_flag = {false};
+    int server_fd = -1;
+    std::string server_address;
 
-    static const size_t BUFFER_SIZE;
+    epoll_wrapper epoll;
+    std::unique_ptr<epoll_event[]> events;
+    std::unordered_map<int, socket_wrapper> sockets;
+    std::unordered_map<int, std::deque<std::string>> responses;
+
+    static const int MAX_EVENTS;
 };
 
 

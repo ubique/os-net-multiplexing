@@ -3,79 +3,80 @@
 //
 
 #include "server.h"
-#include "lib/error.h"
 
 #include <cstring>
 #include <zconf.h>
 #include <iostream>
 
 
-const size_t server::BUFFER_SIZE = 1024;
+const int server::MAX_EVENTS = 100;
 
-server::server(char* socket_name)
-    : connection_socket(socket(AF_UNIX, SOCK_SEQPACKET, 0))
-    , sock_name(socket_name)
+server::server(char* addr, int port)
+    : events(new epoll_event[MAX_EVENTS])
+    , server_address(addr)
 {
-    if (connection_socket == -1) {
-        error("Server: unable to create connection socket");
-    }
+    memset(&address, 0, sizeof(sockaddr_in));
+    address.sin_family = AF_INET;
+    address.sin_port = port;
+    address.sin_addr.s_addr = inet_addr(addr);
 
-    memset(&address, 0, sizeof(sockaddr_un));
-    address.sun_family = AF_UNIX;
-    strncpy(address.sun_path, socket_name, sizeof(address.sun_path) - 1);
+    socket_wrapper server_socket = socket_wrapper();
+    server_socket.bind(address);
+    server_socket.listen();
+    server_fd = server_socket.get_fd();
 
-    int ret;
-    ret = bind(connection_socket, reinterpret_cast<sockaddr*>(&address), sizeof(sockaddr));
-    if (ret == -1) {
-        ::error("Server: unable to bind connection socket");
-    }
+    epoll.start();
+    epoll.process(server_fd, EPOLLIN, EPOLL_CTL_ADD);
 
-    ret = listen(connection_socket, 10);
-    if (ret == -1) {
-        ::error("Server: unable to listen connection socket");
-    }
+    sockets[server_fd] = std::move(server_socket);
 }
 
 void server::start() {
-    char buffer[BUFFER_SIZE + 1];
     std::cout << "Echo server started!\n" << std::endl;
 
-    while (true) {
-        int data_socket = accept(connection_socket, nullptr, nullptr);
-        if (data_socket == -1) {
-            error("Server: unable to create data socket");
-            break;
-        }
+    while (!down_flag) {
+        int events_number = epoll.wait(events.get(), MAX_EVENTS);
 
-        int ret, len;
-        len = read(data_socket, buffer, BUFFER_SIZE);
-        if (len == -1) {
-            ::error("Server: unable to receive data");
-            continue;
-        }
-        buffer[BUFFER_SIZE] = 0;
-        std::string message(buffer, buffer + len);
-        std::cout << "Server received:\n" << message << std::endl;
+        for (int i = 0; i < events_number; ++i) {
+            uint32_t tmp_events = events.get()[i].events;
+            int tmp_fd = events.get()[i].data.fd;
 
-        ret = write(data_socket, buffer, len);
-        if (ret == -1) {
-            ::error("Server: unable to send data");
-        }
-        std::cout << "Server sent:\n" << message << "\n" << std::endl;
-
-        if (!strncmp(buffer, "SHUTDOWN", 8)) {
-            down_flag = true;
-        }
-
-        close(data_socket);
-        if (down_flag) {
-            std::cout << "Server down." << std::endl;
-            break;
+            if (tmp_events & (EPOLLERR | EPOLLHUP)) {
+                epoll.process(tmp_fd, -1, EPOLL_CTL_DEL);
+                std::cout << "Client disconnected" << std::endl;
+                if (responses.count(tmp_fd)) {
+                    responses.erase(tmp_fd);
+                }
+                if (sockets.count(tmp_fd)) {
+                    sockets.erase(tmp_fd);
+                }
+                continue;
+            }
+            if (tmp_events & EPOLLIN) {
+                if (tmp_fd == server_fd) {
+                    socket_wrapper client_socket = sockets[server_fd].accept();
+                    epoll.process(client_socket.get_fd(), EPOLLIN | EPOLLERR | EPOLLHUP, EPOLL_CTL_ADD);
+                    sockets[client_socket.get_fd()] = std::move(client_socket);
+                    std::cout << "Client connected" << std::endl;
+                } else {
+                    if (responses[tmp_fd].empty()) {
+                        epoll.process(tmp_fd, EPOLLIN | EPOLLOUT | EPOLLERR | EPOLLHUP, EPOLL_CTL_MOD);
+                    }
+                    responses[tmp_fd].push_back(sockets[tmp_fd].readMessage());
+                }
+            }
+            if (tmp_events & EPOLLOUT) {
+                sockets[tmp_fd].writeMessage(responses[tmp_fd].front());
+                responses[tmp_fd].pop_front();
+                if (responses[tmp_fd].empty()) {
+                    responses.erase(tmp_fd);
+                    epoll.process(tmp_fd, EPOLLIN | EPOLLERR | EPOLLHUP, EPOLL_CTL_MOD);
+                }
+            }
         }
     }
 }
 
-server::~server() {
-    close(connection_socket);
-    unlink(sock_name.c_str());
+void server::stop() {
+    down_flag = true;
 }

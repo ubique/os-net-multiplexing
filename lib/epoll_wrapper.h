@@ -17,12 +17,11 @@ public:
 
     void stop();
 
-    void process(int fd, uint32_t events, int mode);
+    void process(int fd, uint32_t event_type, int mode);
 
-    int wait(struct epoll_event* events);
+    int wait(struct epoll_event* events, int max_events_number);
 
 public:
-    static const int MAX_EVENTS;
     static const int MAX_CONNECTIONS;
 
 private:

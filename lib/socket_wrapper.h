@@ -5,8 +5,8 @@
 #ifndef OS_NET_SOCKET_WRAPPER_H
 #define OS_NET_SOCKET_WRAPPER_H
 
+#include <netinet/in.h>
 #include <sys/socket.h>
-#include <sys/un.h>
 #include <string>
 #include <zconf.h>
 
@@ -20,20 +20,14 @@ public:
     socket_wrapper& operator=(const socket_wrapper& other) = delete;
     socket_wrapper& operator=(socket_wrapper&& other) noexcept;
 
-
-    void create(const std::string& socket_name);
-
-    void bind(sockaddr_un& address);
-
+    void bind(sockaddr_in& address);
     void listen();
-
-    void connect(sockaddr_un& address);
-
+    void connect(sockaddr_in& address);
     socket_wrapper accept();
-
     int read(char* buffer, int size);
-
+    std::string readMessage();
     void write(const std::string& message);
+    void writeMessage(const std::string& message);
 
     int get_fd();
 
@@ -41,7 +35,6 @@ private:
     explicit socket_wrapper(int fd_);
 
 private:
-    std::string name;
     int fd;
 };
 

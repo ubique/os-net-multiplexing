@@ -25,4 +25,5 @@ add_executable(os-net-client
         client/client.h
         client/client.cpp)
 
-target_link_libraries(lib)
+target_link_libraries(os-net-server lib)
+target_link_libraries(os-net-client lib)

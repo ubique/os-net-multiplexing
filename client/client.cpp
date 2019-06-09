@@ -2,64 +2,61 @@
 // Created by vitalya on 19.05.19.
 //
 
-#include "lib/error.h"
 #include "client.h"
 
+#include <arpa/inet.h>
 #include <cstring>
+#include <deque>
 #include <zconf.h>
 #include <iostream>
 #include <cmath>
 
-const size_t client::BUFFER_SIZE = 1024;
+const int client::MAX_EVENTS = 3;
 
-client::client(char *socket_name)
-    : sock_name(socket_name)
+client::client(char* addr, int port)
+    : events(new epoll_event[MAX_EVENTS])
+    , server_address(addr)
+    , client_socket()
 {
+    memset(&address, 0, sizeof(sockaddr_in));
+    address.sin_family = AF_INET;
+    address.sin_port = port;
+    address.sin_addr.s_addr = inet_addr(addr);
+    client_socket.connect(address);
+
+    std::cout << "Connected to server" << std::endl;
+
+    epoll.start();
+    epoll.process(STDIN_FILENO, EPOLLIN, EPOLL_CTL_ADD);
+    epoll.process(client_socket.get_fd(), EPOLLIN, EPOLL_CTL_ADD);
 }
 
-std::string client::send(const std::string& message) {
-    data_socket = socket(AF_UNIX, SOCK_SEQPACKET, 0);
+void client::start() {
+    while (!down_flag) {
+        int events_number = epoll.wait(events.get(), MAX_EVENTS);
 
-    if (data_socket == -1) {
-        error("Client: unable to create data socket");
-    }
+        for (int i = 0; i < events_number; ++i) {
+            int tmp_fd = events.get()[i].data.fd;
 
-    memset(&address, 0, sizeof(sockaddr_un));
-    address.sun_family = AF_UNIX;
-    strncpy(address.sun_path, sock_name.c_str(), sizeof(address.sun_path) - 1);
-
-    int ret;
-    ret = connect(data_socket, reinterpret_cast<sockaddr*>(&address), sizeof(sockaddr));
-    if (ret == -1) {
-        error("Client: unable to connect to server");
-    }
-
-    char buffer[BUFFER_SIZE + 1];
-    size_t ptr = 0;
-    std::string result;
-
-    while (ptr < message.size()) {
-        size_t len = std::min(BUFFER_SIZE, message.size() - ptr);
-
-        ret = write(data_socket, message.c_str() + ptr, len);
-        if (ret == -1) {
-            error("Client: unable to sent data");
+            if (tmp_fd == client_socket.get_fd()) {
+                std::string response = client_socket.readMessage();
+                std::cout << "Received: " + response + "\n" << std::endl;
+            } else  {
+                std::string request;
+                std::cin >> request;
+                if (request == "exit" || std::cin.eof()) {
+                    stop();
+                    continue;
+                }
+                client_socket.writeMessage(request);
+                std::cout << "Sent: " + request + "\n" << std::endl;
+            }
         }
-        std::cout << "Client sent:\n" << message << std::endl;
-
-        ret = read(data_socket, buffer, BUFFER_SIZE);
-        if (ret == -1) {
-            error("Client: unable to receive data");
-        }
-        std::string response(buffer, buffer + ret);
-        std::cout << "Client received:\n" << response << "\n" <<  std::endl;
-
-        ptr += len;
-        result += response;
     }
-    return result;
 }
 
-client::~client() {
-    close(data_socket);
+void client::stop() {
+    down_flag = true;
+    epoll.stop();
 }
+
