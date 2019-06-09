@@ -103,9 +103,9 @@ std::vector<int> Multiplexer::get_ready() const
     #endif
 
     #ifdef __BSD__
-    struct kevent evList[32];
+    struct kevent evList[MAX_EVENTS];
 
-    int cnt = kevent(m_pollfd, NULL, 0, evList, 32, NULL);
+    int cnt = kevent(m_pollfd, NULL, 0, evList, MAX_EVENTS, NULL);
     if (cnt == -1) {
         std::error_code ec(errno, std::system_category());
         throw std::system_error(ec, "Event kqueue failed");
