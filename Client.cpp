@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <netinet/in.h>
 #include <sys/epoll.h>
+#include <fcntl.h>
 #include <iostream>
 
 #include "Client.h"
@@ -30,6 +31,8 @@ void Client::run() {
     if (connect(sfd, (struct sockaddr*) &addr, sizeof(addr)) == -1) {
         throw ClientException("Connection failed");
     }
+    const int flags = fcntl(sfd, F_GETFL, 0);
+    fcntl(sfd, F_SETFL, flags | O_NONBLOCK);
 
     std::string line;
     while (!finished) {
@@ -48,13 +51,16 @@ void Client::run() {
 }
 
 void Client::getResponse() {
-    ssize_t len = recv(sfd, responseBuffer, BUFFER_SIZE, 0);
-    if (len == -1) {
-        throw ClientException("Response was not received");
-    } else if (len == 0) {
-        finished = true;
-    } else {
-        std::cout << "[S] " << std::string(responseBuffer, len) << std::endl;
+    ssize_t len;
+    while (len = recv(sfd, responseBuffer, BUFFER_SIZE, 0)) {
+        if (len == -1) {
+            if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                return;
+            }
+            throw ClientException("Response was not received");
+        } else {
+            std::cout << "[S] " << std::string(responseBuffer, len) << std::endl;
+        }
     }
 }
 
@@ -68,10 +74,19 @@ void Client::checkStdin() {
     }
 }
 
-void Client::sendData(std::string const& line) {
-    if (send(sfd, line.data(), line.size(), 0) == -1) {
-        perror("Response was not sent");
-        throw ClientException("Request sending failed");
+void Client::sendData(std::string const& data) {
+    if (data.empty()) {
+        return; // ignore empty lines
+    }
+    int sent = 0;
+    int curSent = 0;
+
+    while (sent < data.size()) {
+        if ((curSent = send(sfd, data.substr(sent).data(), data.size() - sent, 0)) == -1) {
+            perror("Response was not sent");
+            throw ClientException("Request sending failed");
+        }
+        sent += curSent;
     }
 }
 

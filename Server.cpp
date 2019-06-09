@@ -9,7 +9,7 @@
 #include "Server.h"
 
 Server::Server(uint16_t port) : port(port),
-                                listenfd(socket(AF_INET, SOCK_STREAM, 0 /* or IPPROTO_TCP*/)),
+                                listenfd(socket(AF_INET, SOCK_STREAM, 0 /* or IPPROTO_TCP*/ | SOCK_NONBLOCK)),
                                 epollfd(epoll_create1(0)) {
 
     struct sockaddr_in socket_addr;
@@ -91,14 +91,18 @@ void Server::readStdin() {
 }
 
 void Server::processRequest(int fd) {
-    ssize_t len = read(fd, requestBuffer, BUFFER_SIZE);
-    if (len == -1) {
-        perror("Reading failed");
-        disconnect(fd);
-    } else if (len == 0) {
-        disconnect(fd);
-    } else {
-        sendReply(fd, len);
+    ssize_t len;
+    while (len = read(fd, requestBuffer, BUFFER_SIZE)) {
+        if (len == -1) {
+            if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                return;
+            }
+            perror("Reading failed");
+            disconnect(fd);
+            return;
+        } else {
+            sendReply(fd, len);
+        }
     }
 }
 
@@ -111,8 +115,17 @@ void Server::disconnect(int fd) {
 
 void Server::sendReply(int fd, int len) {
     std::cout << "[C" + std::to_string(fd) + "] " << std::string(requestBuffer, len) << std::endl;
-    if (send(fd, requestBuffer, len, 0) == -1) {
-        perror("Response was not sent");
-        disconnect(fd); // Maybe it's a bad plan
+
+    int sent = 0;
+    int curSent = 0;
+
+    std::string data(requestBuffer, len);
+    while (sent < data.size()) {
+        if ((curSent = send(fd, data.substr(sent).data(), data.size() - sent, 0)) == -1) {
+            perror("Response was not sent");
+            disconnect(fd);
+            return;
+        }
+        sent += curSent;
     }
 }
