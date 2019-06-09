@@ -26,7 +26,7 @@ E.g. `./ntp-server 8080`
 
 **Client:**  
 `ntp-client [<server hostname or address> [<server port>]]`  
-E.g. `./ntp-client localhost 8080`, `ntp-client`
+E.g. `./ntp-client localhost 8080`, `ntp-client`  
 Available commands are `ask` and `quit`.
 
 ## Testing
