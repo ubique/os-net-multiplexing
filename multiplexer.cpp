@@ -115,6 +115,7 @@ std::vector<int> Multiplexer::get_ready() const
         int fd = (int)evList[i].ident;
 
         if (evList[i].flags & EV_EOF) {
+            std::cout << "Client disconnected" << std::endl;
             close(fd);
             // Automatically removed from kq by the kernel
         } else {

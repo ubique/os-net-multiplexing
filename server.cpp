@@ -176,7 +176,7 @@ void NTPServer::process_client(int clientfd) const
             std::cerr << "Partial data sent" << std::endl;
         }
     } else if (!ntransferred) {
-        std::cout << "Client disconnecting" << std::endl;
+        std::cout << "Client disconnected" << std::endl;
         // Unsubscribe
         if (!m_mult.delete_polled(clientfd)) {
             std::cerr << "Failed to unsubscribe from client" << std::endl;
