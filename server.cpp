@@ -93,7 +93,7 @@ void server::await_and_respond() {
             } else if ((events[i].events & EPOLLIN > 0) && (events[i].events &EPOLLOUT) > 0) {
                 fd_wrapper client_desc(events[i].data.fd);
 
-                char *buf = reinterpret_cast<char *>(malloc(BUFFER_SIZE));
+                char buf[BUFFER_SIZE];
                 size_t buffer_size = 0;
                 client_desc.simple_receive_message(buf, buffer_size, BUFFER_SIZE);
 
