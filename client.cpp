@@ -10,6 +10,7 @@
 #include <zconf.h>
 #include <vector>
 #include <chrono>
+#include <cstring>
 #include "utils.h"
 
 using std::cout;
@@ -26,15 +27,6 @@ void print_vec(const vector<char>& vec, int size) {
         cout << vec[i];
     }
     cout << "\n";
-}
-
-void check_error(int rc, const string &problem_name) {
-    if (rc == -1) {
-        cout << "error occurred with ";
-        cout << problem_name << " in client\n";
-        cout << strerror(errno) << "\n";
-        exit(0);
-    }
 }
 
 int main(int argc, char **argv) {
@@ -65,22 +57,22 @@ int main(int argc, char **argv) {
 
     message[size - 1] = '\0';
     int s = socket(AF_INET, SOCK_STREAM, 0);
-    check_error(s, "socket");
+    is_failure(s, "socket");
     struct sockaddr_in server{};
     server.sin_family = AF_INET;
     server.sin_port = htons(SERVER_PORT);
-    check_error(inet_pton(AF_INET, argv[1], &server.sin_addr), "inet_pton");
-    check_error(connect(s, (sockaddr *) (&server), sizeof(server)), "connect");
+    is_failure(inet_pton(AF_INET, argv[1], &server.sin_addr), "inet_pton");
+    is_failure(connect(s, (sockaddr *) (&server), sizeof(server)), "connect");
     print_vec(message, size - 1);
     size*=2;
     if (code) {
         size++;
     }
     fun_send(&size, 1, s, "client");
+    size /= 2;
     fun_send(&message[0], size, s, "client");
     fun_recv(&message[0], size, s, "client");
-    size /= 2;
     print_vec(message, size - 1);
-    check_error(close(s), "close");
+    is_failure(close(s), "close");
     return 0;
 }

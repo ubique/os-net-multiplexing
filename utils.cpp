@@ -7,10 +7,10 @@
 #include <iostream>
 #include <cstring>
 #include <sys/socket.h>
+#include <netinet/in.h>
 
 using std::cout;
 using std::string;
-
 
 
 void fun_send(char *what, int amount, int where, string message) {
@@ -41,3 +41,19 @@ void fun_recv(char *where, int amount, int from, string message) {
     }
 }
 
+void add_new_client(const int* master, sockaddr_in* client, int* poll_s, socklen_t* size_s) {
+    int s = accept(*master, (sockaddr *) (&client), size_s);
+    is_failure(s, "accept");
+    struct epoll_event epoll_event;
+    epoll_event.data.fd = s;
+    epoll_event.events = EPOLLIN;
+    is_failure(epoll_ctl(*poll_s, EPOLL_CTL_ADD, s, &epoll_event), "epoll_ctl");
+}
+
+void is_failure(int rc, const string &problem_name) {
+    if (rc == -1) {
+        cout << problem_name << "\n";
+        cout << "error occurred with " << strerror(errno) << "\n";
+        exit(EXIT_FAILURE);
+    }
+}

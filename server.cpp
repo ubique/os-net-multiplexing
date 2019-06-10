@@ -13,7 +13,7 @@
 #include <cstring>
 #include <string>
 #include <vector>
-#include <sys/epoll>
+#include <sys/epoll.h>
 #include "utils.h"
 
 using std::cout;
@@ -22,15 +22,6 @@ using std::string;
 using std::vector;
 
 const int MAX_POLL_SIZE = 16;
-
-void check_error(int rc, const string &problem_name) {
-    if (rc == -1) {
-        cout << "error occurred with ";
-        cout << problem_name << " in server\n";
-        cout << strerror(errno) << "\n";
-        exit(0);
-    }
-}
 
 void wrong_usage() {
     cout << "Usage: ./Task5_client [address]";
@@ -42,36 +33,31 @@ int main(int argc, char **argv) {
         return 0;
     }
     int master = socket(AF_INET, SOCK_STREAM, 0);
-    check_error(master, "socket");
+    is_failure(master, "socket");
     struct sockaddr_in server{}, client{};
     socklen_t size_s = sizeof(sockaddr_in);
 
     server.sin_family = AF_INET;
     server.sin_port = htons(SERVER_PORT);
 
-    check_error(inet_pton(AF_INET, argv[1], &server.sin_addr), "inet_pton");
-    check_error(bind(master, (sockaddr *) (&server), size_s), "bind");
-    check_error(listen(master, SOMAXCONN), "listen")
+    is_failure(inet_pton(AF_INET, argv[1], &server.sin_addr), "inet_pton");
+    is_failure(bind(master, (sockaddr *) (&server), size_s), "bind");
+    is_failure(listen(master, SOMAXCONN), "listen");
 
     int poll_s = epoll_create1(0);
-    check_error(poll_s, "epoll_create1");
+    is_failure(poll_s, "epoll_create1");
     struct epoll_event Event;
 
     Event.data.fd = master;
     Event.events = EPOLLIN;
-    check_error(epoll_ctl(poll_s, EPOLL_CTL_ADD, master, &Event), "epoll_ctl");
+    is_failure(epoll_ctl(poll_s, EPOLL_CTL_ADD, master, &Event), "epoll_ctl");
     for(;;) {
         struct epoll_event Events[MAX_POLL_SIZE];
         int limit = epoll_wait(poll_s, Events, MAX_POLL_SIZE, -1);
-        check_error(limit, "epoll_wait");
+        is_failure(limit, "epoll_wait");
         for (int i = 0; i < limit; i++) {
             if (Events[i].data.fd == master) {
-                int s = accept(master, (sockaddr *) (&client), &size_s);
-                check_error(s, "accept");
-                struct epoll_event epoll_event;
-                epoll_event.data.fd = s;
-                epoll_event.events = EPOLLIN;
-                check_error(epoll_ctl(poll_s, EPOLL_CTL_ADD, s, &epoll_event), "epoll_ctl");
+                add_new_client(&master, &client, &poll_s, &size_s);
             } else {
                 int s = Events[i].data.fd;
                 char size;
@@ -85,7 +71,7 @@ int main(int argc, char **argv) {
                 fun_recv(&data[0], size, s, "server");
                 cout << &data[0] << endl;
                 for (int i = 0; i < data.size(); i++) {
-                    copy[i] = data[i + 1];
+                    copy[i] = data[i];
                 }
                 copy[size - 1] = '\0';
 
@@ -99,7 +85,7 @@ int main(int argc, char **argv) {
                     }
                 }
                 fun_send(&copy[0], size, s, "server");
-                check_error(close(s), "close");
+                is_failure(close(s), "close");
             }
         }
 
