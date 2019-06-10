@@ -95,13 +95,14 @@ void client::add_to_epoll(int sd, uint32_t events) {
     if (epoll_ctl(*epoll_fd, EPOLL_CTL_ADD, sd, &event) == -1) {
         throw client_exception("Couldn't add descriptor to epoll");
     }
-    log("Descriptor " + std::to_string(sd) + " was addedd to epoll");
+    log("Descriptor " + std::to_string(sd) + " was added to epoll");
 }
 
 std::string client::read(int desc) {
     std::string message = utils::read(desc);
 
     if (message.size() == 0) {
+        alive = false;
         throw client_exception("Couldn't read respond from socket " + std::to_string(desc));
     }
 
@@ -114,6 +115,9 @@ void client::send(int desc, std::string const& message) {
     if (was_send == 0) {
         alive = false;
         throw client_exception("Couldn't send request to socket " + std::to_string(desc));
+    }
+    if (was_send != message.size()) {
+        log("Not full message was sent");
     }
 }
 

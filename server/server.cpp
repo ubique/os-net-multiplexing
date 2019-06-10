@@ -123,7 +123,11 @@ void server::send(int desc, std::string const& message) {
     size_t was_send = utils::send(desc, message);
 
     if (was_send == 0) {
+        remove_from_epoll(desc);
         throw server_exception("Couldn't send respond to " + std::to_string(desc));
+    }
+    if (was_send != message.size()) {
+        log("Couldn't send full message");
     }
 }
 
