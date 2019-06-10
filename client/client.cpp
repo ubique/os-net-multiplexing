@@ -12,6 +12,7 @@
 #include <string>
 #include <vector>
 #include <cstring>
+#include "../utils/utils.h"
 
 client_exception::client_exception(std::string const& msg) : std::runtime_error(msg + ": " + std::string(strerror(errno))) {}
 
@@ -98,28 +99,20 @@ void client::add_to_epoll(int sd, uint32_t events) {
 }
 
 std::string client::read(int desc) {
-    std::vector<char> buffer(BUFFER_SIZE);
-    ssize_t was_read = ::read(desc, buffer.data(), BUFFER_SIZE);
+    std::string message = utils::read(desc);
 
-    if (was_read == 0) {
-        alive = false;
-    }
-    if (was_read == -1) {
-
+    if (message.size() == 0) {
         throw client_exception("Couldn't read respond from socket " + std::to_string(desc));
     }
 
-    return std::string(buffer.data());
+    return message;
 }
 
 void client::send(int desc, std::string const& message) {
-    size_t message_len = strlen(message.data());
-    ssize_t was_send = ::send(desc, message.data(), message.size(), 0);
+    size_t was_send = utils::send(desc, message);
 
     if (was_send == 0) {
         alive = false;
-    }
-    if (was_send == -1) {
         throw client_exception("Couldn't send request to socket " + std::to_string(desc));
     }
 }

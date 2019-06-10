@@ -15,6 +15,7 @@
 #include "../socket_descriptor/socket_descriptor.h"
 #include <sys/epoll.h>
 #include <cstring>
+#include "../utils/utils.h"
 
 server_exception::server_exception(std::string const& msg) : std::runtime_error(msg + ": " + strerror(errno)) {}
 
@@ -109,30 +110,20 @@ void server::remove_from_epoll(int sd) {
 }
 
 std::string server::read(int desc) {
-    std::vector<char> buffer(BUFFER_SIZE);
-    ssize_t was_read = recv(desc, buffer.data(), BUFFER_SIZE, 0);
+    std::string message = utils::read(desc);
 
-    if (was_read == -1) {
-        throw server_exception("Couldn't read request from socket " + std::to_string(desc));
-    }
-
-    if (was_read == 0) {
+    if (message.size() == 0) {
         remove_from_epoll(desc);
     }
 
-    return std::string(buffer.data());
+    return message;
 }
 
 void server::send(int desc, std::string const& message) {
-    size_t message_len = strlen(message.data());
-    ssize_t was_send = ::send(desc, message.data(), message_len, 0);
-
-    if (was_send == -1) {
-        throw server_exception("Couldn't send respond to " + std::to_string(desc));
-    }
+    size_t was_send = utils::send(desc, message);
 
     if (was_send == 0) {
-        remove_from_epoll(desc);
+        throw server_exception("Couldn't send respond to " + std::to_string(desc));
     }
 }
 

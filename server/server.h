@@ -38,8 +38,6 @@ private:
 
     epoll_event events[MAX_EVENTS];
 
-    chat_engine engine;
-
     std::unordered_map<int, socket_descriptor> sockets;
 };
 
