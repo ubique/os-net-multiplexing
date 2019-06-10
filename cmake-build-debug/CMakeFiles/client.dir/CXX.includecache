@@ -6,13 +6,17 @@
 
 #IncludeRegexTransform: 
 
-.././headers/Utils.h
-string
--
+/home/utusi/os-net-multiplexing/Utils.h
 vector
 -
+sys/epoll.h
+-
+sys/ioctl.h
+-
+sys/event.h
+-
 
-/home/utusi/os/os-net-multiplexing/client.cpp
+/home/utusi/os-net-multiplexing/client.cpp
 stdio.h
 -
 stdlib.h
@@ -35,12 +39,8 @@ stdio.h
 -
 iostream
 -
+cstring
+-
 Utils.h
--
-fcntl.h
--
-sys/epoll.h
--
-unistd.h
--
+/home/utusi/os-net-multiplexing/Utils.h
 

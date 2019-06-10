@@ -43,10 +43,10 @@ RM = /home/utusi/.local/share/JetBrains/Toolbox/apps/CLion/ch-0/191.6707.69/bin/
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/utusi/os/os-net-multiplexing
+CMAKE_SOURCE_DIR = /home/utusi/os-net-multiplexing
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/utusi/os/os-net-multiplexing/cmake-build-debug
+CMAKE_BINARY_DIR = /home/utusi/os-net-multiplexing/cmake-build-debug
 
 # Include any dependencies generated for this target.
 include CMakeFiles/Server.dir/depend.make
@@ -59,81 +59,81 @@ include CMakeFiles/Server.dir/flags.make
 
 CMakeFiles/Server.dir/src/POP3Server.cpp.o: CMakeFiles/Server.dir/flags.make
 CMakeFiles/Server.dir/src/POP3Server.cpp.o: ../src/POP3Server.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/utusi/os/os-net-multiplexing/cmake-build-debug/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/Server.dir/src/POP3Server.cpp.o"
-	/usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/Server.dir/src/POP3Server.cpp.o -c /home/utusi/os/os-net-multiplexing/src/POP3Server.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/utusi/os-net-multiplexing/cmake-build-debug/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/Server.dir/src/POP3Server.cpp.o"
+	/usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/Server.dir/src/POP3Server.cpp.o -c /home/utusi/os-net-multiplexing/src/POP3Server.cpp
 
 CMakeFiles/Server.dir/src/POP3Server.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/Server.dir/src/POP3Server.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/utusi/os/os-net-multiplexing/src/POP3Server.cpp > CMakeFiles/Server.dir/src/POP3Server.cpp.i
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/utusi/os-net-multiplexing/src/POP3Server.cpp > CMakeFiles/Server.dir/src/POP3Server.cpp.i
 
 CMakeFiles/Server.dir/src/POP3Server.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/Server.dir/src/POP3Server.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/utusi/os/os-net-multiplexing/src/POP3Server.cpp -o CMakeFiles/Server.dir/src/POP3Server.cpp.s
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/utusi/os-net-multiplexing/src/POP3Server.cpp -o CMakeFiles/Server.dir/src/POP3Server.cpp.s
 
 CMakeFiles/Server.dir/src/User.cpp.o: CMakeFiles/Server.dir/flags.make
 CMakeFiles/Server.dir/src/User.cpp.o: ../src/User.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/utusi/os/os-net-multiplexing/cmake-build-debug/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object CMakeFiles/Server.dir/src/User.cpp.o"
-	/usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/Server.dir/src/User.cpp.o -c /home/utusi/os/os-net-multiplexing/src/User.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/utusi/os-net-multiplexing/cmake-build-debug/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object CMakeFiles/Server.dir/src/User.cpp.o"
+	/usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/Server.dir/src/User.cpp.o -c /home/utusi/os-net-multiplexing/src/User.cpp
 
 CMakeFiles/Server.dir/src/User.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/Server.dir/src/User.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/utusi/os/os-net-multiplexing/src/User.cpp > CMakeFiles/Server.dir/src/User.cpp.i
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/utusi/os-net-multiplexing/src/User.cpp > CMakeFiles/Server.dir/src/User.cpp.i
 
 CMakeFiles/Server.dir/src/User.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/Server.dir/src/User.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/utusi/os/os-net-multiplexing/src/User.cpp -o CMakeFiles/Server.dir/src/User.cpp.s
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/utusi/os-net-multiplexing/src/User.cpp -o CMakeFiles/Server.dir/src/User.cpp.s
 
 CMakeFiles/Server.dir/src/Message.cpp.o: CMakeFiles/Server.dir/flags.make
 CMakeFiles/Server.dir/src/Message.cpp.o: ../src/Message.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/utusi/os/os-net-multiplexing/cmake-build-debug/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building CXX object CMakeFiles/Server.dir/src/Message.cpp.o"
-	/usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/Server.dir/src/Message.cpp.o -c /home/utusi/os/os-net-multiplexing/src/Message.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/utusi/os-net-multiplexing/cmake-build-debug/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building CXX object CMakeFiles/Server.dir/src/Message.cpp.o"
+	/usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/Server.dir/src/Message.cpp.o -c /home/utusi/os-net-multiplexing/src/Message.cpp
 
 CMakeFiles/Server.dir/src/Message.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/Server.dir/src/Message.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/utusi/os/os-net-multiplexing/src/Message.cpp > CMakeFiles/Server.dir/src/Message.cpp.i
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/utusi/os-net-multiplexing/src/Message.cpp > CMakeFiles/Server.dir/src/Message.cpp.i
 
 CMakeFiles/Server.dir/src/Message.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/Server.dir/src/Message.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/utusi/os/os-net-multiplexing/src/Message.cpp -o CMakeFiles/Server.dir/src/Message.cpp.s
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/utusi/os-net-multiplexing/src/Message.cpp -o CMakeFiles/Server.dir/src/Message.cpp.s
 
 CMakeFiles/Server.dir/src/Session.cpp.o: CMakeFiles/Server.dir/flags.make
 CMakeFiles/Server.dir/src/Session.cpp.o: ../src/Session.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/utusi/os/os-net-multiplexing/cmake-build-debug/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Building CXX object CMakeFiles/Server.dir/src/Session.cpp.o"
-	/usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/Server.dir/src/Session.cpp.o -c /home/utusi/os/os-net-multiplexing/src/Session.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/utusi/os-net-multiplexing/cmake-build-debug/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Building CXX object CMakeFiles/Server.dir/src/Session.cpp.o"
+	/usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/Server.dir/src/Session.cpp.o -c /home/utusi/os-net-multiplexing/src/Session.cpp
 
 CMakeFiles/Server.dir/src/Session.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/Server.dir/src/Session.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/utusi/os/os-net-multiplexing/src/Session.cpp > CMakeFiles/Server.dir/src/Session.cpp.i
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/utusi/os-net-multiplexing/src/Session.cpp > CMakeFiles/Server.dir/src/Session.cpp.i
 
 CMakeFiles/Server.dir/src/Session.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/Server.dir/src/Session.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/utusi/os/os-net-multiplexing/src/Session.cpp -o CMakeFiles/Server.dir/src/Session.cpp.s
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/utusi/os-net-multiplexing/src/Session.cpp -o CMakeFiles/Server.dir/src/Session.cpp.s
 
 CMakeFiles/Server.dir/src/DBase.cpp.o: CMakeFiles/Server.dir/flags.make
 CMakeFiles/Server.dir/src/DBase.cpp.o: ../src/DBase.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/utusi/os/os-net-multiplexing/cmake-build-debug/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Building CXX object CMakeFiles/Server.dir/src/DBase.cpp.o"
-	/usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/Server.dir/src/DBase.cpp.o -c /home/utusi/os/os-net-multiplexing/src/DBase.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/utusi/os-net-multiplexing/cmake-build-debug/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Building CXX object CMakeFiles/Server.dir/src/DBase.cpp.o"
+	/usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/Server.dir/src/DBase.cpp.o -c /home/utusi/os-net-multiplexing/src/DBase.cpp
 
 CMakeFiles/Server.dir/src/DBase.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/Server.dir/src/DBase.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/utusi/os/os-net-multiplexing/src/DBase.cpp > CMakeFiles/Server.dir/src/DBase.cpp.i
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/utusi/os-net-multiplexing/src/DBase.cpp > CMakeFiles/Server.dir/src/DBase.cpp.i
 
 CMakeFiles/Server.dir/src/DBase.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/Server.dir/src/DBase.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/utusi/os/os-net-multiplexing/src/DBase.cpp -o CMakeFiles/Server.dir/src/DBase.cpp.s
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/utusi/os-net-multiplexing/src/DBase.cpp -o CMakeFiles/Server.dir/src/DBase.cpp.s
 
 CMakeFiles/Server.dir/src/Utils.cpp.o: CMakeFiles/Server.dir/flags.make
 CMakeFiles/Server.dir/src/Utils.cpp.o: ../src/Utils.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/utusi/os/os-net-multiplexing/cmake-build-debug/CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Building CXX object CMakeFiles/Server.dir/src/Utils.cpp.o"
-	/usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/Server.dir/src/Utils.cpp.o -c /home/utusi/os/os-net-multiplexing/src/Utils.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/utusi/os-net-multiplexing/cmake-build-debug/CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Building CXX object CMakeFiles/Server.dir/src/Utils.cpp.o"
+	/usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/Server.dir/src/Utils.cpp.o -c /home/utusi/os-net-multiplexing/src/Utils.cpp
 
 CMakeFiles/Server.dir/src/Utils.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/Server.dir/src/Utils.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/utusi/os/os-net-multiplexing/src/Utils.cpp > CMakeFiles/Server.dir/src/Utils.cpp.i
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/utusi/os-net-multiplexing/src/Utils.cpp > CMakeFiles/Server.dir/src/Utils.cpp.i
 
 CMakeFiles/Server.dir/src/Utils.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/Server.dir/src/Utils.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/utusi/os/os-net-multiplexing/src/Utils.cpp -o CMakeFiles/Server.dir/src/Utils.cpp.s
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/utusi/os-net-multiplexing/src/Utils.cpp -o CMakeFiles/Server.dir/src/Utils.cpp.s
 
 # Object files for target Server
 Server_OBJECTS = \
@@ -155,7 +155,7 @@ libServer.a: CMakeFiles/Server.dir/src/DBase.cpp.o
 libServer.a: CMakeFiles/Server.dir/src/Utils.cpp.o
 libServer.a: CMakeFiles/Server.dir/build.make
 libServer.a: CMakeFiles/Server.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/utusi/os/os-net-multiplexing/cmake-build-debug/CMakeFiles --progress-num=$(CMAKE_PROGRESS_7) "Linking CXX static library libServer.a"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/utusi/os-net-multiplexing/cmake-build-debug/CMakeFiles --progress-num=$(CMAKE_PROGRESS_7) "Linking CXX static library libServer.a"
 	$(CMAKE_COMMAND) -P CMakeFiles/Server.dir/cmake_clean_target.cmake
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/Server.dir/link.txt --verbose=$(VERBOSE)
 
@@ -169,6 +169,6 @@ CMakeFiles/Server.dir/clean:
 .PHONY : CMakeFiles/Server.dir/clean
 
 CMakeFiles/Server.dir/depend:
-	cd /home/utusi/os/os-net-multiplexing/cmake-build-debug && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/utusi/os/os-net-multiplexing /home/utusi/os/os-net-multiplexing /home/utusi/os/os-net-multiplexing/cmake-build-debug /home/utusi/os/os-net-multiplexing/cmake-build-debug /home/utusi/os/os-net-multiplexing/cmake-build-debug/CMakeFiles/Server.dir/DependInfo.cmake --color=$(COLOR)
+	cd /home/utusi/os-net-multiplexing/cmake-build-debug && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/utusi/os-net-multiplexing /home/utusi/os-net-multiplexing /home/utusi/os-net-multiplexing/cmake-build-debug /home/utusi/os-net-multiplexing/cmake-build-debug /home/utusi/os-net-multiplexing/cmake-build-debug/CMakeFiles/Server.dir/DependInfo.cmake --color=$(COLOR)
 .PHONY : CMakeFiles/Server.dir/depend
 

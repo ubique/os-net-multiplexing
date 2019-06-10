@@ -48,24 +48,13 @@ RM = /home/utusi/.local/share/JetBrains/Toolbox/apps/CLion/ch-0/191.6707.69/bin/
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/utusi/os/os-net-multiplexing
+CMAKE_SOURCE_DIR = /home/utusi/os-net-multiplexing
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/utusi/os/os-net-multiplexing/cmake-build-debug
+CMAKE_BINARY_DIR = /home/utusi/os-net-multiplexing/cmake-build-debug
 
 #=============================================================================
 # Targets provided globally by CMake.
-
-# Special rule for the target rebuild_cache
-rebuild_cache:
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Running CMake to regenerate build system..."
-	/home/utusi/.local/share/JetBrains/Toolbox/apps/CLion/ch-0/191.6707.69/bin/cmake/linux/bin/cmake -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR)
-.PHONY : rebuild_cache
-
-# Special rule for the target rebuild_cache
-rebuild_cache/fast: rebuild_cache
-
-.PHONY : rebuild_cache/fast
 
 # Special rule for the target edit_cache
 edit_cache:
@@ -78,11 +67,22 @@ edit_cache/fast: edit_cache
 
 .PHONY : edit_cache/fast
 
+# Special rule for the target rebuild_cache
+rebuild_cache:
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Running CMake to regenerate build system..."
+	/home/utusi/.local/share/JetBrains/Toolbox/apps/CLion/ch-0/191.6707.69/bin/cmake/linux/bin/cmake -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR)
+.PHONY : rebuild_cache
+
+# Special rule for the target rebuild_cache
+rebuild_cache/fast: rebuild_cache
+
+.PHONY : rebuild_cache/fast
+
 # The main all target
 all: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/utusi/os/os-net-multiplexing/cmake-build-debug/CMakeFiles /home/utusi/os/os-net-multiplexing/cmake-build-debug/CMakeFiles/progress.marks
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/utusi/os-net-multiplexing/cmake-build-debug/CMakeFiles /home/utusi/os-net-multiplexing/cmake-build-debug/CMakeFiles/progress.marks
 	$(MAKE) -f CMakeFiles/Makefile2 all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/utusi/os/os-net-multiplexing/cmake-build-debug/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/utusi/os-net-multiplexing/cmake-build-debug/CMakeFiles 0
 .PHONY : all
 
 # The main clean target
@@ -111,32 +111,6 @@ depend:
 .PHONY : depend
 
 #=============================================================================
-# Target rules for targets named server
-
-# Build rule for target.
-server: cmake_check_build_system
-	$(MAKE) -f CMakeFiles/Makefile2 server
-.PHONY : server
-
-# fast build rule for target.
-server/fast:
-	$(MAKE) -f CMakeFiles/server.dir/build.make CMakeFiles/server.dir/build
-.PHONY : server/fast
-
-#=============================================================================
-# Target rules for targets named Server
-
-# Build rule for target.
-Server: cmake_check_build_system
-	$(MAKE) -f CMakeFiles/Makefile2 Server
-.PHONY : Server
-
-# fast build rule for target.
-Server/fast:
-	$(MAKE) -f CMakeFiles/Server.dir/build.make CMakeFiles/Server.dir/build
-.PHONY : Server/fast
-
-#=============================================================================
 # Target rules for targets named client
 
 # Build rule for target.
@@ -148,6 +122,19 @@ client: cmake_check_build_system
 client/fast:
 	$(MAKE) -f CMakeFiles/client.dir/build.make CMakeFiles/client.dir/build
 .PHONY : client/fast
+
+#=============================================================================
+# Target rules for targets named server
+
+# Build rule for target.
+server: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 server
+.PHONY : server
+
+# fast build rule for target.
+server/fast:
+	$(MAKE) -f CMakeFiles/server.dir/build.make CMakeFiles/server.dir/build
+.PHONY : server/fast
 
 client.o: client.cpp.o
 
@@ -203,206 +190,22 @@ server.cpp.s:
 	$(MAKE) -f CMakeFiles/server.dir/build.make CMakeFiles/server.dir/server.cpp.s
 .PHONY : server.cpp.s
 
-src/DBase.o: src/DBase.cpp.o
-
-.PHONY : src/DBase.o
-
-# target to build an object file
-src/DBase.cpp.o:
-	$(MAKE) -f CMakeFiles/Server.dir/build.make CMakeFiles/Server.dir/src/DBase.cpp.o
-.PHONY : src/DBase.cpp.o
-
-src/DBase.i: src/DBase.cpp.i
-
-.PHONY : src/DBase.i
-
-# target to preprocess a source file
-src/DBase.cpp.i:
-	$(MAKE) -f CMakeFiles/Server.dir/build.make CMakeFiles/Server.dir/src/DBase.cpp.i
-.PHONY : src/DBase.cpp.i
-
-src/DBase.s: src/DBase.cpp.s
-
-.PHONY : src/DBase.s
-
-# target to generate assembly for a file
-src/DBase.cpp.s:
-	$(MAKE) -f CMakeFiles/Server.dir/build.make CMakeFiles/Server.dir/src/DBase.cpp.s
-.PHONY : src/DBase.cpp.s
-
-src/Message.o: src/Message.cpp.o
-
-.PHONY : src/Message.o
-
-# target to build an object file
-src/Message.cpp.o:
-	$(MAKE) -f CMakeFiles/Server.dir/build.make CMakeFiles/Server.dir/src/Message.cpp.o
-.PHONY : src/Message.cpp.o
-
-src/Message.i: src/Message.cpp.i
-
-.PHONY : src/Message.i
-
-# target to preprocess a source file
-src/Message.cpp.i:
-	$(MAKE) -f CMakeFiles/Server.dir/build.make CMakeFiles/Server.dir/src/Message.cpp.i
-.PHONY : src/Message.cpp.i
-
-src/Message.s: src/Message.cpp.s
-
-.PHONY : src/Message.s
-
-# target to generate assembly for a file
-src/Message.cpp.s:
-	$(MAKE) -f CMakeFiles/Server.dir/build.make CMakeFiles/Server.dir/src/Message.cpp.s
-.PHONY : src/Message.cpp.s
-
-src/POP3Server.o: src/POP3Server.cpp.o
-
-.PHONY : src/POP3Server.o
-
-# target to build an object file
-src/POP3Server.cpp.o:
-	$(MAKE) -f CMakeFiles/Server.dir/build.make CMakeFiles/Server.dir/src/POP3Server.cpp.o
-.PHONY : src/POP3Server.cpp.o
-
-src/POP3Server.i: src/POP3Server.cpp.i
-
-.PHONY : src/POP3Server.i
-
-# target to preprocess a source file
-src/POP3Server.cpp.i:
-	$(MAKE) -f CMakeFiles/Server.dir/build.make CMakeFiles/Server.dir/src/POP3Server.cpp.i
-.PHONY : src/POP3Server.cpp.i
-
-src/POP3Server.s: src/POP3Server.cpp.s
-
-.PHONY : src/POP3Server.s
-
-# target to generate assembly for a file
-src/POP3Server.cpp.s:
-	$(MAKE) -f CMakeFiles/Server.dir/build.make CMakeFiles/Server.dir/src/POP3Server.cpp.s
-.PHONY : src/POP3Server.cpp.s
-
-src/Session.o: src/Session.cpp.o
-
-.PHONY : src/Session.o
-
-# target to build an object file
-src/Session.cpp.o:
-	$(MAKE) -f CMakeFiles/Server.dir/build.make CMakeFiles/Server.dir/src/Session.cpp.o
-.PHONY : src/Session.cpp.o
-
-src/Session.i: src/Session.cpp.i
-
-.PHONY : src/Session.i
-
-# target to preprocess a source file
-src/Session.cpp.i:
-	$(MAKE) -f CMakeFiles/Server.dir/build.make CMakeFiles/Server.dir/src/Session.cpp.i
-.PHONY : src/Session.cpp.i
-
-src/Session.s: src/Session.cpp.s
-
-.PHONY : src/Session.s
-
-# target to generate assembly for a file
-src/Session.cpp.s:
-	$(MAKE) -f CMakeFiles/Server.dir/build.make CMakeFiles/Server.dir/src/Session.cpp.s
-.PHONY : src/Session.cpp.s
-
-src/User.o: src/User.cpp.o
-
-.PHONY : src/User.o
-
-# target to build an object file
-src/User.cpp.o:
-	$(MAKE) -f CMakeFiles/Server.dir/build.make CMakeFiles/Server.dir/src/User.cpp.o
-.PHONY : src/User.cpp.o
-
-src/User.i: src/User.cpp.i
-
-.PHONY : src/User.i
-
-# target to preprocess a source file
-src/User.cpp.i:
-	$(MAKE) -f CMakeFiles/Server.dir/build.make CMakeFiles/Server.dir/src/User.cpp.i
-.PHONY : src/User.cpp.i
-
-src/User.s: src/User.cpp.s
-
-.PHONY : src/User.s
-
-# target to generate assembly for a file
-src/User.cpp.s:
-	$(MAKE) -f CMakeFiles/Server.dir/build.make CMakeFiles/Server.dir/src/User.cpp.s
-.PHONY : src/User.cpp.s
-
-src/Utils.o: src/Utils.cpp.o
-
-.PHONY : src/Utils.o
-
-# target to build an object file
-src/Utils.cpp.o:
-	$(MAKE) -f CMakeFiles/Server.dir/build.make CMakeFiles/Server.dir/src/Utils.cpp.o
-	$(MAKE) -f CMakeFiles/client.dir/build.make CMakeFiles/client.dir/src/Utils.cpp.o
-.PHONY : src/Utils.cpp.o
-
-src/Utils.i: src/Utils.cpp.i
-
-.PHONY : src/Utils.i
-
-# target to preprocess a source file
-src/Utils.cpp.i:
-	$(MAKE) -f CMakeFiles/Server.dir/build.make CMakeFiles/Server.dir/src/Utils.cpp.i
-	$(MAKE) -f CMakeFiles/client.dir/build.make CMakeFiles/client.dir/src/Utils.cpp.i
-.PHONY : src/Utils.cpp.i
-
-src/Utils.s: src/Utils.cpp.s
-
-.PHONY : src/Utils.s
-
-# target to generate assembly for a file
-src/Utils.cpp.s:
-	$(MAKE) -f CMakeFiles/Server.dir/build.make CMakeFiles/Server.dir/src/Utils.cpp.s
-	$(MAKE) -f CMakeFiles/client.dir/build.make CMakeFiles/client.dir/src/Utils.cpp.s
-.PHONY : src/Utils.cpp.s
-
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
 	@echo "... all (the default if no target is provided)"
 	@echo "... clean"
 	@echo "... depend"
+	@echo "... edit_cache"
+	@echo "... client"
 	@echo "... rebuild_cache"
 	@echo "... server"
-	@echo "... edit_cache"
-	@echo "... Server"
-	@echo "... client"
 	@echo "... client.o"
 	@echo "... client.i"
 	@echo "... client.s"
 	@echo "... server.o"
 	@echo "... server.i"
 	@echo "... server.s"
-	@echo "... src/DBase.o"
-	@echo "... src/DBase.i"
-	@echo "... src/DBase.s"
-	@echo "... src/Message.o"
-	@echo "... src/Message.i"
-	@echo "... src/Message.s"
-	@echo "... src/POP3Server.o"
-	@echo "... src/POP3Server.i"
-	@echo "... src/POP3Server.s"
-	@echo "... src/Session.o"
-	@echo "... src/Session.i"
-	@echo "... src/Session.s"
-	@echo "... src/User.o"
-	@echo "... src/User.i"
-	@echo "... src/User.s"
-	@echo "... src/Utils.o"
-	@echo "... src/Utils.i"
-	@echo "... src/Utils.s"
 .PHONY : help
 
 

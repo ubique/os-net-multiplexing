@@ -9,120 +9,125 @@
 #include <string>
 #include <stdio.h>
 #include <iostream>
-#include <Utils.h>
-#include <fcntl.h>
-#include <sys/epoll.h>
+#include <cstring>
+#include "Utils.h"
 
-void print_error(const std::string &msg) {
-    perror(msg.c_str());
-    exit(EXIT_FAILURE);
-}
+int sock;
+int poll;
+const int CNT_TRY = 50;
 
-int epoll_ctl_wrap(int epool_fd, int op, int fd, uint32_t events) {
-    struct epoll_event event;
-    event.data.fd = fd;
-    event.events = events;
-    if (epoll_ctl(epool_fd, op, fd, &event) == -1) {
-        print_error("Can't make epoll_ctl");
-        return -1;
+int main(int argc, char** argv, char** env) {
+    if (argc > 2) {
+        print_error("A lot of arguments");
+        exit(EXIT_FAILURE);
     }
-    return 0;
-}
+    struct sockaddr_in addr{};
 
-int delete_socket(int epoll, int fd) {
-    if (epoll_ctl_wrap(epoll, EPOLL_CTL_DEL, fd, 0) == -1) {
-        print_error("Can't delete socket from poll");
-        return -1;
-    }
-    return 0;
-}
-
-int main(int argc, char** argv) {
-    if (argc == 0 || argc > 2) {
-        std::cerr << "Incorrect count of arguments" << std::endl;
+    sock = socket(AF_INET, SOCK_STREAM, 0);
+    if (sock < 0) {
+        print_error("Can't create a socket");
+        exit(EXIT_FAILURE);
     }
 
-    const char* host_name = argc == 1 ? argv[0] : argv[1];
-    struct hostent *server;
-    int socket_fd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
-    if (socket_fd == -1) {
-        print_error("ERROR opening socket");
-        return 0;
-    }
-    fcntl(0, F_SETFL, O_NONBLOCK);
-    server = gethostbyname(host_name);
-    if (server == nullptr) {
-        print_error("ERROR, no such host");
-        close(socket_fd);
-        return 0;
-    }
+    set_non_blocking(sock);
 
-    struct sockaddr_in server_addr{};
-    memset(&server_addr, 0, sizeof(server_addr));
-    server_addr.sin_family = AF_INET;
-    memcpy(reinterpret_cast<char*>(&server_addr.sin_addr.s_addr), static_cast<char*>(server->h_addr), server->h_length);
-    server_addr.sin_port = htons(8888);
-
-    int status = connect(socket_fd, reinterpret_cast<sockaddr*>(&server_addr), sizeof(server_addr));
-    for (int i = 0; i < 32; i++) {
-        if (status != -1 || (errno != EINTR)) {
-            break;
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(12345);
+    addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    int st = connect(sock, (struct sockaddr *) &addr, sizeof(addr));
+    poll = epoll_create1(0);
+    epoll_event events[CNT_EVENTS];
+    if (poll == -1) {
+        print_error("Can't create a poll");
+        close(sock);
+        exit(EXIT_FAILURE);
+    }
+    bool in_prog = errno == EINPROGRESS;
+    if (st == -1 && !in_prog) {
+        print_error("Error in connect");
+        close(sock);
+        close(poll);
+        exit(EXIT_FAILURE);
+    } else if (st == -1) {
+        if (epoll_ctl_wrap(poll, EPOLL_CTL_ADD, sock, EPOLLOUT) == -1) {
+            print_error("Can't add socket in poll");
+            close(sock);
+            close(poll);
+            exit(EXIT_FAILURE);
         }
-        status = connect(socket_fd, reinterpret_cast<sockaddr*>(&server_addr), sizeof(server_addr));
-    }
-
-    int epoll_fd = epoll_create(8);
-    if (epoll_fd == -1) {
-        std::cerr << "Can't create epoll" << std::endl;
-        exit(EXIT_FAILURE);
-    }
-
-    if (epoll_ctl_wrap(epoll_fd, EPOLL_CTL_ADD, socket_fd, EPOLLIN | EPOLLOUT) == -1) {
-        std::cerr << "Can't add socket" << std::endl;
-        exit(EXIT_FAILURE);
-    }
-
-    if (epoll_ctl_wrap(epoll_fd, EPOLL_CTL_ADD, 0, EPOLLIN) == -1) {
-        std::cerr << "Can't add a stdin" << std::endl;
-        exit(EXIT_FAILURE);
-    }
-
-    std::cout << "Client started!" << std::endl;
-    std::cout << "For exit print \"exit\"" << std::endl;
-
-    struct epoll_event events[8];
-    while(true) {
-        int count = epoll_wait(epoll_fd, events, 8, -1);
-        if (count == -1) {
-            if (errno == EINTR) {
-                continue;
+        int cnt = 0;
+        while (true) {
+            cnt = epoll_wait(poll, reinterpret_cast<epoll_event *>(&events), CNT_EVENTS, -1);
+            if (cnt == -1) {
+                if (errno == EINTR) {
+                    continue;
+                }
+                print_error("Wait in progress failed");
+                close(sock);
+                close(poll);
+                exit(EXIT_FAILURE);
             }
-            break;
+            int stat;
+            socklen_t len = sizeof(int);
+            if (getsockopt(sock, SOL_SOCKET, SO_ERROR, &stat, &len) == -1) {
+                print_error("Can't getseckopt");
+                close(sock);
+                close(poll);
+                exit(EXIT_FAILURE);
+            }
+            if (stat != 0) {
+                print_error("Can't connect");
+                close(sock);
+                close(poll);
+                exit(EXIT_FAILURE);
+            }
+            if (stat == 0) {
+                break;
+            }
         }
-        for(size_t i = 0; i < count; i++) {
-            if (events[i].data.fd == 0) {
+        if (delete_socket(poll, sock) == -1) {
+            print_error("Can't delete socket from poll");
+            close(sock);
+            close(poll);
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    if (epoll_ctl_wrap(poll, EPOLL_CTL_ADD, sock, EPOLLIN) == -1) {
+        print_error("Can't add a socket in poll");
+        close(sock);
+        close(poll);
+        exit(EXIT_FAILURE);
+    }
+
+    set_non_blocking(0);
+    if (epoll_ctl_wrap(poll, EPOLL_CTL_ADD, 0, EPOLLIN) ) {
+        print_error("Can't add a stdin in poll");
+        close(sock);
+        close(poll);
+        exit(EXIT_FAILURE);
+    }
+
+    while(true) {
+        int cnt = epoll_wait(poll, reinterpret_cast<epoll_event *>(&events), CNT_EVENTS, -1);
+        if (cnt == -1) {
+            continue;
+        }
+        for(int i = 0; i < cnt; i++) {
+            if (events[i].data.fd == sock) {
                 if (events[i].events & EPOLLIN) {
-                    std::string command;
-                    std::getline(std::cin , command);
-                    if (command == "exit") {
-                        close(socket_fd);
-                        exit(EXIT_SUCCESS);
-                    }
-                    if(send(socket_fd, command.c_str(), command.size() + 1, 0) == -1) {
-                        print_error("bad!");
-                        close(socket_fd);
-                    }
+                    std::string response;
+                    read(sock, response);
+                    std::cout << response << std::endl;
                 }
-            } else if (events[i].data.fd == socket_fd) {
-                if (events[i].events % EPOLLIN) {
-                    int size_buf = 1024;
-                    char buf[size_buf];
-                    memset(buf, 0, sizeof(buf));
-                    if (recv(socket_fd, &buf, size_buf, 0) == -1) {
-                        print_error("Can't read!");
-                    }
-                    std::cout << "Response: " << buf << std::endl;
+            } else if (events[i].data.fd == 0) {
+                if (events[i].events & EPOLLIN) {
+                    std::string str;
+                    std::getline(std::cin, str);
+                    write(sock, str);
                 }
+            } else {
+                print_error("Unknown fd");
             }
         }
     }

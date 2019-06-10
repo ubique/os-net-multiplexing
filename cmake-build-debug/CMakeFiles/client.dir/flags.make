@@ -6,5 +6,5 @@ CXX_FLAGS = -g   -std=gnu++14
 
 CXX_DEFINES = 
 
-CXX_INCLUDES = -I/home/utusi/os/os-net-multiplexing/./headers -I/home/utusi/os/os-net-multiplexing/./src 
+CXX_INCLUDES = 
 
