@@ -13,6 +13,7 @@
 #include <vector>
 #include <cstring>
 #include "../utils/utils.h"
+#include <fcntl.h>
 
 client_exception::client_exception(std::string const& msg) : std::runtime_error(msg + ": " + std::string(strerror(errno))) {}
 
@@ -34,6 +35,10 @@ void client::establish_connection(std::string const& address, int port) {
     server_addr.sin_family = AF_INET;
     server_addr.sin_port = htons(port);
     server_addr.sin_addr.s_addr = inet_addr(address.data());
+
+    if (fcntl(*socket_fd, F_SETFL, O_NONBLOCK) == -1) {
+        log("Couldn't change socket mode");
+    }
 
     if (connect(*socket_fd, reinterpret_cast<sockaddr*>(&server_addr), sizeof(sockaddr_in)) == -1) {
         throw client_exception("Couldn't connect to the server " + address);
