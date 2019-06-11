@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 #include <sys/socket.h>
-#include <zconf.h>
+#include <unistd.h>
 
 std::string utils::read(int desc, size_t expected) {
     std::vector<char> buffer;
