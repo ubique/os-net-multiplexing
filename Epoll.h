@@ -21,8 +21,6 @@ public:
 
     void start();
 
-    bool check();
-
     void close();
 
     int doEvent(int fd, uint32_t flags, int mode);

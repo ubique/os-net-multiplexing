@@ -57,8 +57,4 @@ int Epoll::wait(struct epoll_event *events) {
     return size;
 }
 
-bool Epoll::check() {
-    return data != -1;
-}
-
 
