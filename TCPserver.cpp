@@ -12,7 +12,11 @@
 #include <string>
 #include <vector>
 #include <utils.hpp>
+#ifdef __FressBSD__
+#include <sys/event.h>
+#else
 #include <sys/epoll.h>
+#endif
 #include <fcntl.h>
 #include <unistd.h>
 #include <set>
@@ -51,26 +55,57 @@ int main(int argc, char **argv) {
     check_error(inet_pton(AF_INET, argv[1], &server.sin_addr), "inet_pton");
     check_error(bind(master, (sockaddr *) (&server), size), "bind");
     check_error(listen(master, SOMAXCONN), "listen");
-    int EPoll = epoll_create1(0);
-    check_error(EPoll, "epoll_create1");
-    struct epoll_event Event;
-    Event.data.fd = master;
-    Event.events = EPOLLIN;
-    check_error(epoll_ctl(EPoll, EPOLL_CTL_ADD, master, &Event), "epoll_ctl");
+    #ifdef __FreeBSD__
+int kq= kqueue();
+check_error(kq, "kqueue");
+struct kevent ev;
+memset(&ev, 0, sizeof(kevent));
+EV_SET(&ev, master, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, NULL);
+check_error(kq, &event, 1, NULL, 0, NULL, "EV_SET");
+    #else
+	    int EPoll = epoll_create1(0);
+	    check_error(EPoll, "epoll_create1");
+	    struct epoll_event Event;
+	    Event.data.fd = master;
+		    Event.events = EPOLLIN;
+		    check_error(epoll_ctl(EPoll, EPOLL_CTL_ADD, master, &Event), "epoll_ctl");
+    #endif
     while (true) {
-        struct epoll_event Events[MAX_EVENTS];
-        int N = epoll_wait(EPoll, Events, MAX_EVENTS, -1);
-        check_error(N, "epoll_wait");
+	int N;
+	#ifdef __FreeBSD__
+		struct kevent kfs[10];
+		memset(kfs, 0, sizeof(kevent) * 10);
+		N = kevent(kfs, NULL, 0, &kfs, 10, NULL);
+	#else
+        	struct epoll_event Events[MAX_EVENTS];
+        	N = epoll_wait(EPoll, Events, MAX_EVENTS, -1);
+	#endif
+	check_error(N, "wait in multiplexing");
         for (int i = 0; i < N; i++) {
-            if (Events[i].data.fd == master) {
+#ifdef __FreeBSD__
+		if(kfs[i].ident == master)
+#else
+            if (Events[i].data.fd == master) 
+#endif
+	    {
                 int slave = accept(master, (sockaddr *) (&client), &size);
                 check_error(slave, "accept");
+#ifdef __FreeBSD__
+		struct kevent kvnt;
+		memset(&kvnt, 0, sizeof(kvnt));
+#else
                 struct epoll_event slaveEvent;
                 slaveEvent.data.fd = slave;
                 slaveEvent.events = EPOLLIN;
                 check_error(epoll_ctl(EPoll, EPOLL_CTL_ADD, slave, &slaveEvent), "epoll_ctl");
+#endif
             } else {
-                int slave = Events[i].data.fd;
+		int slave;
+		#ifdef __FreeBSD__
+			slave = kfs.ident;
+		#else	
+                	slave = Events[i].data.fd;
+		#endif
                 char size;
                 doRecv(&size, 1, slave);
                 vector<char> data(size);
