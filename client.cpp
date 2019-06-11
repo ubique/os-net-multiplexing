@@ -19,6 +19,12 @@ client::client(const char* addr, const char* port) : socket_client_fd(socket(AF_
     }
 }
 
+void prompt(bool &can_read_input) {
+    std::cout << "Request:  ";
+    std::cout.flush();
+    can_read_input = true;
+}
+
 void client::run() {
     struct epoll_event events[MAX_EVENTS];
     struct epoll_event cur_event; 
@@ -43,9 +49,8 @@ void client::run() {
     }
     
     bool alive = true;
-    std::cout << "Request:  ";
-    std::cout.flush();
-    bool can_read_input = true;
+    bool can_read_input;
+    prompt(can_read_input);
     
     while (alive) {
         int cnt = epoll_wait(epoll_fd_wrapper.get_fd(), events, MAX_EVENTS, -1);
@@ -84,10 +89,8 @@ void client::run() {
                     message_length_read += (size_t) cur_read;
                 }
 
-                can_read_input = true;
                 std::cout << "Response: " << response.data() << std::endl;
-                std::cout << "Request:  ";
-                std::cout.flush();
+                prompt(can_read_input);
             } else if (events[i].data.fd == 0) {
                 if (!can_read_input) {
                     error("Please, wait response from server", false);
@@ -100,7 +103,8 @@ void client::run() {
 
                 if (message == "-exit") {
                     return;
-                } else if (message == "\n" || message == "") {
+                } else if (message == "\n" || message.empty()) {
+                    prompt(can_read_input);
                     continue;
                 } else if (message == "-help") {
                     std::cout << HELP << std::endl;
@@ -111,6 +115,7 @@ void client::run() {
         
                 if (message_length > MAX_LEN_MESSAGE) {
                     error("Too large message", false);
+                    prompt(can_read_input);
                     continue;
                 }
 

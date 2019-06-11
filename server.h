@@ -30,11 +30,19 @@ struct data {
 
     size_t message_length;
     size_t message_length_read;
+    size_t message_length_sent;
+    bool have_sent_length;
     std::string message;
 
     data() = default;
 
-    data(int fd, int ind) : fd(fd), ind(ind), message_length(0), message_length_read(0), message("") {}
+    data(int fd, int ind)
+            : fd(fd), ind(ind),
+              message_length(0),
+              message_length_read(0),
+              message_length_sent(0),
+              have_sent_length(false),
+              message("") {}
 };
 
 void error(const std::string &message, bool with_errno = true, bool help = false, bool need_exit = false) {

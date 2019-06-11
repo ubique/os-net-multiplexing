@@ -54,8 +54,6 @@ void server::run() {
 
     data_for_epoll.emplace_back(socket_fd.get_fd(), 0);
     cur_event.data.u32 = 0;
-    //cur_event.data.ptr = data_for_epoll.data();
-    //cur_event.data.fd = socket_fd.get_fd();
 
     cur_event.events = EPOLLIN;
     if (epoll_ctl(epoll_fd_wrapper.get_fd(), EPOLL_CTL_ADD, socket_fd.get_fd(), &cur_event) == -1) {
@@ -72,9 +70,7 @@ void server::run() {
             if (data_for_epoll[events[i].data.u32].ind == -1) {
                 continue;
             } else if (data_for_epoll[events[i].data.u32].fd == socket_fd.get_fd()) {
-                struct sockaddr_in client_addr;
-                socklen_t client_addr_size = sizeof(struct sockaddr_in);
-                int client_fd = accept(socket_fd.get_fd(), (sockaddr *) (&client_addr), &client_addr_size);
+                int client_fd = accept(socket_fd.get_fd(), nullptr, nullptr);
                 if (client_fd == -1) {
                     error("Can't accept client address");
                     continue;
@@ -84,7 +80,7 @@ void server::run() {
 
                 fcntl(client_fd, F_SETFL, fcntl(client_fd, F_GETFL, 0) | O_NONBLOCK);
                 cur_event = {};
-                cur_event.events = EPOLLIN;
+                cur_event.events = EPOLLIN | EPOLLOUT;
                 cur_event.data.u32 = find_new_ind(queue_free_ind, data_for_epoll);
                 data_for_epoll[cur_event.data.u32] = {client_fd, (int) cur_event.data.u32};
 
@@ -99,111 +95,107 @@ void server::run() {
                 }
             } else {
                 size_t ind_events = events[i].data.u32;
+                size_t &message_length = data_for_epoll[ind_events].message_length;
                 int client_fd = data_for_epoll[ind_events].fd;
+                if (events[i].events & EPOLLIN) {
+                    if (message_length == 0) {
+                        std::vector<uint8_t> for_read_len(1);
+                        ssize_t read_message_length = recv(client_fd, for_read_len.data(), 1, 0);
 
-                if (data_for_epoll[ind_events].message_length == 0) {
-                    std::vector<uint8_t> for_read_len(1);
-                    ssize_t read_message_length = recv(client_fd, for_read_len.data(), 1, 0);
+                        if (read_message_length > 0) {
+                            message_length = for_read_len[0];
+                            data_for_epoll[ind_events].message.resize(for_read_len[0], ' ');
+                        } else {
+                            if (read_message_length == -1) {
+                                error("Can't receive message length");
+                            }
+                            std::cout << "Client disconnected" << std::endl;
 
-                    if (read_message_length > 0) {
-                        data_for_epoll[ind_events].message_length = for_read_len[0];
-                        data_for_epoll[ind_events].message.resize(for_read_len[0], ' ');
-                    } else {
-                        if (read_message_length == -1) {
-                            error("Can't receive message length");
+                            if (epoll_ctl(epoll_fd_wrapper.get_fd(), EPOLL_CTL_DEL, client_fd, nullptr) == -1) {
+                                error("Can't delete fd");
+                            }
+
+                            index_release(ind_events, queue_free_ind, data_for_epoll);
+
+                            if (client_fd != -1) {
+                                if (close(client_fd) == -1) {
+                                    error("Can't close fd");
+                                }
+                            }
                         }
-                        std::cout << "Client disconnected" << std::endl;
+                    } else { // TODO: delete this else
+                        size_t left_read = message_length - data_for_epoll[ind_events].message_length_read;
 
-                        if (epoll_ctl(epoll_fd_wrapper.get_fd(), EPOLL_CTL_DEL, client_fd, nullptr) == -1) {
-                            error("Can't delete fd");
-                        }
+                        ssize_t cur_read = recv(client_fd, (void *) (data_for_epoll[ind_events].message.data() +
+                                                                     data_for_epoll[ind_events].message_length_read),
+                                                left_read, 0);
 
-                        index_release(ind_events, queue_free_ind, data_for_epoll);
+                        if (cur_read > 0) {
+                            data_for_epoll[ind_events].message_length_read += cur_read;
 
-                        if (client_fd != -1) {
-                            if (close(client_fd) == -1) {
-                                error("Can't close fd");
+                            if (data_for_epoll[ind_events].message_length_read == message_length) {
+//                                events[i].events = EPOLLOUT;
+//                                epoll_ctl(epoll_fd_wrapper.get_fd(), EPOLL_CTL_MOD, client_fd, &events[i]);
+                            }
+                        } else {
+                            if (cur_read == -1) {
+                                error("Can't receive message");
+                            }
+                            std::cout << "Client disconnected" << std::endl;
+
+                            if (epoll_ctl(epoll_fd_wrapper.get_fd(), EPOLL_CTL_DEL, client_fd, nullptr) == -1) {
+                                error("Can't delete fd");
+                            }
+
+                            index_release(ind_events, queue_free_ind, data_for_epoll);
+
+                            if (client_fd != -1) {
+                                if (close(client_fd) == -1) {
+                                    error("Can't close fd");
+                                }
                             }
                         }
                     }
-                } else {
-                    size_t message_length = data_for_epoll[ind_events].message_length;
-                    size_t left_read = message_length - data_for_epoll[ind_events].message_length_read;
+                }
+                if (events[i].events & EPOLLOUT) {
+                    bool error_occurred = false;
+                    if (!data_for_epoll[ind_events].have_sent_length && data_for_epoll[ind_events].message_length > 0) {
+                        std::vector<uint8_t> for_send_len(1, message_length);
+                        ssize_t send_message_length = write(client_fd, for_send_len.data(), 1);
 
-                    ssize_t cur_read = recv(client_fd, (void *) (data_for_epoll[ind_events].message.data() + data_for_epoll[ind_events].message_length_read), left_read, 0);
-
-                    if (cur_read > 0) {
-                        data_for_epoll[ind_events].message_length_read += cur_read;
-
-                        if (data_for_epoll[ind_events].message_length_read == data_for_epoll[ind_events].message_length) {
-                            std::vector<uint8_t> for_send_len(1, message_length);
-                            ssize_t send_message_length = write(client_fd, for_send_len.data(), 1);
-
-                            if (send_message_length > 0) {
-                                size_t message_length_sent = 0;
-                                bool send_failed = false;
-
-                                while (message_length_sent < message_length) {
-                                    size_t left_send = message_length - message_length_sent;
-                                    ssize_t cur_sent = write(client_fd, data_for_epoll[ind_events].message.c_str() +
-                                                                        message_length_sent, left_send);
-
-                                    if (cur_sent < 0) {
-                                        error("Can't send message part");
-                                        send_failed = true;
-                                        break;
-                                    } else if (cur_sent == 0) {
-                                        send_failed = true;
-                                        break;
-                                    }
-
-                                    message_length_sent += (size_t) cur_sent;
-                                }
-
-                                if (send_failed) {
-                                    std::cout << "Client disconnected" << std::endl;
-
-                                    if (epoll_ctl(epoll_fd_wrapper.get_fd(), EPOLL_CTL_DEL, client_fd, nullptr) == -1) {
-                                        error("Can't delete fd");
-                                    }
-
-                                    index_release(ind_events, queue_free_ind, data_for_epoll);
-
-                                    if (client_fd != -1) {
-                                        if (close(client_fd) == -1) {
-                                            error("Can't close fd");
-                                        }
-                                    }
-                                } else {
-                                    data_for_epoll[ind_events].ind = 0;
-                                    data_for_epoll[ind_events].message_length = 0;
-                                    data_for_epoll[ind_events].message_length_read = 0;
-                                    data_for_epoll[ind_events].message = "";
-                                }
-                            } else {
-                                if (send_message_length == -1) {
-                                    error("Can't send message length");
-                                }
-
-                                std::cout << "Client disconnected" << std::endl;
-
-                                if (epoll_ctl(epoll_fd_wrapper.get_fd(), EPOLL_CTL_DEL, client_fd, nullptr) == -1) {
-                                    error("Can't delete fd");
-                                }
-
-                                index_release(ind_events, queue_free_ind, data_for_epoll);
-
-                                if (client_fd != -1) {
-                                    if (close(client_fd) == -1) {
-                                        error("Can't close fd");
-                                    }
-                                }
+                        if (send_message_length > 0) {
+                            data_for_epoll[ind_events].have_sent_length = true;
+                        } else {
+                            if (send_message_length == -1) {
+                                error("Can't send message length");
                             }
+                            error_occurred = true;
                         }
-                    } else {
-                        if (cur_read == -1) {
-                            error("Can't receive message");
+                    } else if (data_for_epoll[ind_events].message_length_read > 0) { //already sent length, sending data
+                        size_t &message_length_sent = data_for_epoll[ind_events].message_length_sent;
+                        size_t left_send = data_for_epoll[ind_events].message_length_read - message_length_sent;
+                        ssize_t cur_sent = write(client_fd, data_for_epoll[ind_events].message.c_str() +
+                                                            message_length_sent, left_send);
+
+                        if (cur_sent <= 0) {
+                            if (cur_sent == -1) {
+                                error("Can't send message part");
+                            }
+                            error_occurred = true;
                         }
+                        message_length_sent += (size_t) cur_sent;
+                        if (message_length_sent == message_length) {
+//                            events[i].events = EPOLLIN | EPOLLOUT;
+                            data_for_epoll[ind_events].ind = 0;
+                            data_for_epoll[ind_events].message_length = 0;
+                            data_for_epoll[ind_events].message_length_read = 0;
+                            data_for_epoll[ind_events].have_sent_length = false;
+                            data_for_epoll[ind_events].message_length_sent = 0;
+                            data_for_epoll[ind_events].message = "";
+                        }
+                    }
+
+                    if (error_occurred) {
                         std::cout << "Client disconnected" << std::endl;
 
                         if (epoll_ctl(epoll_fd_wrapper.get_fd(), EPOLL_CTL_DEL, client_fd, nullptr) == -1) {
