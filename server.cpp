@@ -77,19 +77,31 @@ int main(int argc, char *argv[])
             } else {
                 if ((events[i].events & EPOLLIN) && (events[i].events & EPOLLOUT)) {
                     char buf[BUF_SIZE + 1];
-                    int sz = recv(cur_fd, buf, BUF_SIZE, 0);
-                    if (sz < 0) {
+                    int recv_cnt = 0;
+                    int cnt;
+                    while ((cnt = recv(cur_fd, buf + recv_cnt, BUF_SIZE - recv_cnt, 0)) > 0) {
+                        recv_cnt += cnt;
+                        if (buf[recv_cnt - 1] == '\n')
+                            break;
+                    }
+                    if (cnt < 0) {
                         perror("Receiving failed");
                         continue;
                     }
 
-                    buf[sz] = '\0';
+                    buf[recv_cnt - 1] = '\0';
                     string message;
                     if (strcmp(buf, "close") != 0)
-                        message = "Hello, " + string(buf) + "!";
+                        message = "Hello, " + string(buf) + "!\n";
                     else
-                        message = "Bye!";
-                    if (send(cur_fd, message.data(), message.size(), 0) < 0) {
+                        message = "Bye!\n";
+                    int send_cnt = 0;
+                    cnt = 1;
+                    while (send_cnt != message.size() && cnt > 0) {
+                        cnt = send(cur_fd, message.data() + send_cnt, message.size() - send_cnt, 0);
+                        send_cnt += cnt;
+                    }
+                    if (cnt < 0) {
                         perror("Sending failed");
                         continue;
                     }
