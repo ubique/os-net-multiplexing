@@ -36,6 +36,7 @@ private:
     epoll_event events[MAX_EVENTS];
 
     bool alive = true;
+    bool connected = false;
 };
 
 struct client_exception : std::runtime_error {

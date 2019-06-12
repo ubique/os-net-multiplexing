@@ -36,15 +36,23 @@ void client::establish_connection(std::string const& address, int port) {
     server_addr.sin_port = htons(port);
     server_addr.sin_addr.s_addr = inet_addr(address.data());
 
-    if (fcntl(*socket_fd, F_SETFL, O_NONBLOCK) == -1) {
-        log("Couldn't change socket mode");
+    ssize_t flags = fcntl(*socket_fd, F_GETFL);
+    if (flags == -1) {
+        throw client_exception("Couldn't get socket status");
+    }
+    if (fcntl(*socket_fd, F_SETFL, flags | O_NONBLOCK) == -1) {
+        throw client_exception("Couldn't change socket mode");
     }
 
     if (connect(*socket_fd, reinterpret_cast<sockaddr*>(&server_addr), sizeof(sockaddr_in)) == -1) {
-        throw client_exception("Couldn't connect to the server " + address);
+        if (errno != EINPROGRESS) {
+            throw client_exception("Couldn't connect to the server");
+        }
+    } else {
+        connected = true;
+        add_to_epoll(*socket_fd, EPOLLIN);
     }
 
-    add_to_epoll(*socket_fd, EPOLLIN);
 
     log("Connected to server " + address + ", port " + std::to_string(port));
 }
@@ -56,6 +64,7 @@ void client::log(std::string const& msg) {
 
 void client::run() {
     alive = true;
+    std::string request_buffer;
     while (alive) {
         int ready = epoll_wait(*epoll_fd, events, MAX_EVENTS, -1);
         if (ready == -1) {
@@ -63,6 +72,15 @@ void client::run() {
         }
 
         for (int i = 0; i < ready; i++) {
+            if (!connected) {
+                int status = 0;
+                socklen_t s = sizeof(*socket_fd);
+                if (getsockopt(*socket_fd, SOL_SOCKET, SO_ERROR, &status, &s) == 0) {
+                    connected = true;
+                    add_to_epoll(*socket_fd, EPOLLIN);
+                }
+            }
+
             uint32_t mode = events[i].events;
             int desc = events[i].data.fd;
 
@@ -81,7 +99,12 @@ void client::run() {
                         }
 
                         if (!request.empty()) {
-                            send(*socket_fd, request);
+                            request_buffer += request + "\n";
+                        }
+
+                        if (!request_buffer.empty() && connected) {
+                            send(*socket_fd, request_buffer);
+                            request_buffer = "";
                         }
                     }
                 }
