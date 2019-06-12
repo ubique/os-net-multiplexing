@@ -78,7 +78,8 @@ void Server::start() {
                     std::cerr << "cannot add to epoll" << std::endl;
                     continue;
                 }
-                send(acceptSocket, "You are connected", BUFFER_SIZE, 0);
+                char welcomeMsg[] = "You are connected";
+                doSend(welcomeMsg, acceptSocket, sizeof(welcomeMsg));
             } else {
                 char request[BUFFER_SIZE];
                 int acceptSocket = events[i].data.fd;
@@ -99,7 +100,7 @@ void Server::start() {
                 }
                 request[reqBytesNum] = '\0';
                 std::cout << "got from client " << acceptSocket << ": " << request << std::endl;
-                if (send(acceptSocket, request, static_cast<size_t >(reqBytesNum), 0) < 0) {
+                if (!doSend(request, acceptSocket, reqBytesNum)) {
                     std::cerr << "cannot send to client" << std::endl;
                 } else {
                     std::cout << "data sent to client " << acceptSocket << std::endl;
@@ -108,6 +109,24 @@ void Server::start() {
         }
 
     }
+}
+
+bool Server::doSend(char *message, int sock, ssize_t size) {
+    ssize_t sentSize = 0;
+    while (sentSize != size) {
+        ssize_t cur = send(sock, message + sentSize,
+                           static_cast<size_t>(size - sentSize), 0);
+        if (cur == 0) {
+            break;
+        }
+        if (cur < 0) {
+            std::cerr << "cannot send to client" << std::endl;
+            return false;
+        }
+        sentSize += cur;
+    }
+    return true;
+
 }
 
 Server::~Server() {

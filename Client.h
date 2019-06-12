@@ -21,9 +21,8 @@ private:
 
     void openSocket();
 
-    void makeConnection(char *address, uint16_t port);
 
-    void createEpoll();
+    void setUp(char *address, uint16_t port);
 };
 
 

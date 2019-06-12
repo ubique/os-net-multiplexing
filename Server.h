@@ -16,7 +16,7 @@ public:
 private:
     int mySocket;
     int myEpoll;
-    epoll_event* events = new epoll_event[6];
+    epoll_event *events = new epoll_event[6];
     static constexpr size_t BUFFER_SIZE = 1024;
 
     void openSocket();
@@ -24,6 +24,8 @@ private:
     void setUp(char *address, uint16_t port);
 
     void createEpoll();
+
+    bool doSend(char message[], int sock, ssize_t size);
 
 };
 
