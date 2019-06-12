@@ -165,12 +165,11 @@ std::vector<Multiplexer::event> Multiplexer::get_ready() const
             Multiplexer::event mevent;
             mevent.fd = fd;
 
-            auto kqueue_events = events[i].filter;
-            if (kqueue_events & EVFILT_READ) {
-                mevent.type |= POLLIN;
-            }
-            if (kqueue_events & EVFILT_WRITE) {
-                mevent.type |= POLLOUT;
+            auto kqueue_event = events[i].filter;
+            if (kqueue_event == EVFILT_READ) {
+                mevent.type = POLLIN;
+            } else if (kqueue_event == EVFILT_WRITE) {
+                mevent.type = POLLOUT;
             }
 
             ready.push_back(mevent);
