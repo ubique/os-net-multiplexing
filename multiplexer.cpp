@@ -68,19 +68,19 @@ void Multiplexer::add_polled(int fd, int flags) const
     #endif
 
     #ifdef __BSD__
-    struct kevent evset;
-    int events = 0, kflags = EV_ADD;
-    if (flags & POLLIN) {
-        events |= EVFILT_READ;
-    }
-    if (flags & POLLOUT) {
-        events |= EVFILT_WRITE;
-    }
+    struct kevent evset[2];
+    int evcnt = 0, kflags = EV_ADD;
     if (flags & POLLET) {
         kflags |= EV_CLEAR;
     }
-    EV_SET(&evset, fd, events, kflags, 0, 0, NULL);
-    if (kevent(m_pollfd, &evset, 1, NULL, 0, NULL) == -1) {
+    if (flags & POLLIN) {
+        EV_SET(&evset[evcnt++], fd, EVFILT_READ, kflags, 0, 0, NULL);
+    }
+    if (flags & POLLOUT) {
+        EV_SET(&evset[evcnt++], fd, EVFILT_WRITE, kflags, 0, 0, NULL);
+    }
+
+    if (kevent(m_pollfd, evset, evcnt, NULL, 0, NULL) == -1) {
         std::error_code ec(errno, std::system_category());
         throw std::system_error(ec, "Failed to add fd to kqueue");
     }
@@ -101,9 +101,10 @@ bool Multiplexer::delete_polled(int fd) const
     #endif
 
     #ifdef __BSD__
-    struct kevent evset;
-    EV_SET(&evset, fd, EVFILT_READ, EV_DELETE, 0, 0, NULL);
-    return kevent(m_pollfd, &evset, 1, NULL, 0, NULL) != -1;
+    struct kevent evset[2]; // We only support socket r/w
+    EV_SET(&evset[0], fd, EVFILT_READ, EV_DELETE, 0, 0, NULL);
+    EV_SET(&evset[1], fd, EVFILT_WRITE, EV_DELETE, 0, 0, NULL);
+    return kevent(m_pollfd, evset, 2, NULL, 0, NULL) != -1;
     #endif
 }
 
