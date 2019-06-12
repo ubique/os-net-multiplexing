@@ -24,9 +24,9 @@ const std::string HELP = R"SEQ(Usage:
 
 static const size_t EVENTS = 1 << 10;
 
-struct data {
+struct server_data {
     int fd;
-    int ind;
+    bool is_correct;
 
     size_t message_length;
     size_t message_length_read;
@@ -34,10 +34,11 @@ struct data {
     bool have_sent_length;
     std::string message;
 
-    data() = default;
+    server_data() = default;
 
-    data(int fd, int ind)
-            : fd(fd), ind(ind),
+    server_data(int fd, bool is_correct = true)
+            : fd(fd),
+              is_correct(is_correct),
               message_length(0),
               message_length_read(0),
               message_length_sent(0),
