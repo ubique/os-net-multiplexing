@@ -24,8 +24,6 @@ private:
     static void fill_packet(ntp_packet& packet);
     static void set_nonblocking(int sockfd);
 
-    void process_client(int clientfd) const;
-
     int m_listenfd;
     Multiplexer m_mult;
 };

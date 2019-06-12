@@ -19,7 +19,7 @@ private:
     static void print_help(bool error = false);
 
     int open_socket(struct addrinfo* addr) const;
-    void send_request(bool empty = false) const;
+    void send_request(bool empty) const;
     time_t receive_response() const;
 
     int m_socketfd;

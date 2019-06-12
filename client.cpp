@@ -32,10 +32,8 @@ NTPClient::NTPClient(const std::string &hostname, uint16_t port)
     }
 
     m_socketfd = open_socket(server_addr);
-    freeaddrinfo(server_addr);
 
-    m_mult.add_polled(m_socketfd);
-    m_mult.add_polled(STDIN_FILENO);
+    m_mult.add_polled(STDIN_FILENO, Multiplexer::POLLIN);
 }
 
 NTPClient::~NTPClient()
@@ -48,24 +46,36 @@ NTPClient::~NTPClient()
 void NTPClient::run() const
 {
     print_help();
+    bool disconnect_requested = false;
 
     for (;;) {
         auto ready = m_mult.get_ready();
 
-        for (int fd : ready) {
-             if (fd == m_socketfd) {
-                 time_t time = receive_response();
-                 if (time) {
-                     std::cout << "Time: " << ctime(&time);
+        for (auto event : ready) {
+             if (event.fd == m_socketfd) {
+                 if (event.type == Multiplexer::POLLIN) {
+                     time_t time = receive_response();
+                     if (time) {
+                         std::cout << "Time: " << ctime(&time);
+                     }
+                     m_mult.delete_polled(m_socketfd);
+                 } else if (event.type == Multiplexer::POLLOUT) {
+                     send_request(disconnect_requested);
+                     if (!disconnect_requested) {
+                         m_mult.change_polled(m_socketfd, Multiplexer::POLLIN);
+                     } else {
+                         return;
+                     }
                  }
-             } else if (fd == STDIN_FILENO) {
+
+             } else if (event.fd == STDIN_FILENO) {
                  std::string cmd;
                  std::getline(std::cin, cmd);
                  if (cmd == "ask") {
-                     send_request();
+                     m_mult.add_polled(m_socketfd, Multiplexer::POLLOUT);
                  } else if (cmd == "quit") {
-                     send_request(true);
-                     return;
+                     m_mult.add_polled(m_socketfd, Multiplexer::POLLOUT);
+                     disconnect_requested = true;
                  } else {
                      print_help(true);
                  }
@@ -97,6 +107,8 @@ int NTPClient::open_socket(addrinfo *addr) const
         }
     }
 
+    freeaddrinfo(addr);
+
     // All addresses failed
     if (rp == nullptr) {
         std::error_code ec(errno, std::system_category());
@@ -122,14 +134,13 @@ void NTPClient::send_request(bool empty) const
 time_t NTPClient::receive_response() const
 {
     ntp_packet packet = {};
-    // Wait for the response (blocking)
     ssize_t ntransferred = read(m_socketfd, &packet, sizeof(ntp_packet));
     if (ntransferred == -1) {
         close(m_socketfd);
         std::error_code ec(errno, std::system_category());
         throw std::system_error(ec, "Read failed");
     } else if (ntransferred != sizeof (packet)) {
-        std::cerr << "Partial data sent" << std::endl;
+        std::cerr << "Partial data read" << std::endl;
         return 0;
     }
 

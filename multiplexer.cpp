@@ -46,12 +46,18 @@ Multiplexer::~Multiplexer()
     #endif
 }
 
-void Multiplexer::add_polled(int fd, bool edge_triggered) const
+void Multiplexer::add_polled(int fd, int flags) const
 {
     #ifdef __linux__
     struct epoll_event event;
-    event.events = EPOLLIN;
-    if (edge_triggered) {
+    event.events = 0;
+    if (flags & POLLIN) {
+        event.events |= EPOLLIN;
+    }
+    if (flags & POLLOUT) {
+        event.events |= EPOLLOUT;
+    }
+    if (flags & POLLET) {
         event.events |= EPOLLET;
     }
     event.data.fd = fd;
@@ -63,12 +69,29 @@ void Multiplexer::add_polled(int fd, bool edge_triggered) const
 
     #ifdef __BSD__
     struct kevent evset;
-    EV_SET(&evset, fd, EVFILT_READ, EV_ADD, 0, 0, NULL);
+    int events = 0, kflags = EV_ADD;
+    if (flags & POLLIN) {
+        events |= EVFILT_READ;
+    }
+    if (flags & POLLOUT) {
+        events |= EVFILT_WRITE;
+    }
+    if (flags & POLLET) {
+        kflags |= EV_CLEAR;
+    }
+    EV_SET(&evset, fd, events, kflags, 0, 0, NULL);
     if (kevent(m_pollfd, &evset, 1, NULL, 0, NULL) == -1) {
         std::error_code ec(errno, std::system_category());
         throw std::system_error(ec, "Failed to add fd to kqueue");
     }
-    #endif
+#endif
+}
+
+void Multiplexer::change_polled(int fd, int flags) const
+{
+    // TODO: use modification APIs
+    delete_polled(fd);
+    add_polled(fd, flags);
 }
 
 bool Multiplexer::delete_polled(int fd) const
@@ -84,9 +107,9 @@ bool Multiplexer::delete_polled(int fd) const
     #endif
 }
 
-std::vector<int> Multiplexer::get_ready() const
+std::vector<Multiplexer::event> Multiplexer::get_ready() const
 {
-    std::vector<int> ready;
+    std::vector<event> ready;
 
     #ifdef __linux__
     struct epoll_event events[MAX_EVENTS];
@@ -98,28 +121,58 @@ std::vector<int> Multiplexer::get_ready() const
     }
 
     for (int i = 0; i < cnt; ++i) {
-        ready.push_back(events[i].data.fd);
+        int fd = events[i].data.fd;
+
+        if (events[i].events & (EPOLLERR | EPOLLHUP)) {
+            std::cout << "Client disconnected" << std::endl;
+            delete_polled(fd);
+            close(fd);
+        } else {
+            Multiplexer::event mevent;
+            mevent.fd = fd;
+
+            auto epoll_events = events[i].events;
+            if (epoll_events & EPOLLIN) {
+                mevent.type |= POLLIN;
+            }
+            if (epoll_events & EPOLLOUT) {
+                mevent.type |= POLLOUT;
+            }
+
+            ready.push_back(mevent);
+        }
     }
     #endif
 
     #ifdef __BSD__
-    struct kevent evList[MAX_EVENTS];
+    struct kevent events[MAX_EVENTS];
 
-    int cnt = kevent(m_pollfd, NULL, 0, evList, MAX_EVENTS, NULL);
+    int cnt = kevent(m_pollfd, NULL, 0, events, MAX_EVENTS, NULL);
     if (cnt == -1) {
         std::error_code ec(errno, std::system_category());
         throw std::system_error(ec, "Event kqueue failed");
     }
 
     for (int i = 0; i < cnt; ++i) {
-        int fd = (int)evList[i].ident;
+        int fd = (int)events[i].ident;
 
-        if (evList[i].flags & EV_EOF) {
+        if (events[i].flags & EV_EOF) {
             std::cout << "Client disconnected" << std::endl;
             close(fd);
             // Automatically removed from kq by the kernel
         } else {
-            ready.push_back(fd);
+            Multiplexer::event mevent;
+            mevent.fd = fd;
+
+            auto kqueue_events = events[i].filter;
+            if (kqueue_events & EVFILT_READ) {
+                mevent.type |= POLLIN;
+            }
+            if (kqueue_events & EVFILT_WRITE) {
+                mevent.type |= POLLOUT;
+            }
+
+            ready.push_back(mevent);
         }
     }
     #endif

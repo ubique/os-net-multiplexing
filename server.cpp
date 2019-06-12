@@ -13,6 +13,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <system_error>
+#include <unordered_map>
 
 #include "server.h"
 #include "protocol.h"
@@ -63,12 +64,14 @@ NTPServer::NTPServer(uint16_t port)
         throw std::system_error(ec, "Failed to bind the socket");
     }
 
+    set_nonblocking(m_listenfd);
+
     if (listen(m_listenfd, BACKLOG_SIZE) == -1) {
         std::error_code ec(errno, std::system_category());
         throw std::system_error(ec, "Failed to listen on socket");
     }
 
-    m_mult.add_polled(m_listenfd);
+    m_mult.add_polled(m_listenfd, Multiplexer::POLLIN);
 }
 
 NTPServer::~NTPServer()
@@ -80,11 +83,12 @@ NTPServer::~NTPServer()
 
 [[noreturn]] void NTPServer::run() const
 {
+    std::unordered_map<int, ntp_packet> data;
     for (;;) {
         auto ready = m_mult.get_ready();
 
-        for (int fd : ready) {
-            if (fd == m_listenfd) {
+        for (auto event : ready) {
+            if (event.fd == m_listenfd) { // Listener
                 struct sockaddr_storage addr = {};
                 socklen_t addrlen = sizeof(addr);
                 int client = accept(m_listenfd, reinterpret_cast<struct sockaddr*>(&addr), &addrlen);
@@ -97,7 +101,7 @@ NTPServer::~NTPServer()
                 set_nonblocking(client);
 
                 try {
-                    m_mult.add_polled(client, true);
+                    m_mult.add_polled(client, Multiplexer::POLLIN | Multiplexer::POLLET);
                 } catch (std::runtime_error& e) {
                     std::cerr << "Error adding client: " << e.what() << std::endl;
                     if (close(client) == -1) {
@@ -106,8 +110,42 @@ NTPServer::~NTPServer()
                 }
 
                 log_connection(addr);
-            } else {
-                process_client(fd);
+            } else { // Client
+                if (event.type == Multiplexer::POLLIN) {
+                    ntp_packet packet = {};
+
+                    // Receive client request
+                    ssize_t ntransferred = read(event.fd, &packet, sizeof(packet));
+                    if (ntransferred == sizeof (packet)) {
+                        fill_packet(packet);
+                        data[event.fd] = packet;
+                        m_mult.change_polled(event.fd, Multiplexer::POLLOUT | Multiplexer::POLLET);
+                    } else if (!ntransferred) {
+                        std::cout << "Client disconnected" << std::endl;
+                        // Unsubscribe
+                        if (!m_mult.delete_polled(event.fd)) {
+                            std::cerr << "Failed to unsubscribe from client" << std::endl;
+                        }
+                        if (close(event.fd) == -1) {
+                            std::cerr << "Failed to close client socket: " << strerror(errno) << std::endl;
+                        }
+                    } else {
+                        // ignore failed request
+                        std::cerr << "Request incomplete or read failed: " << strerror(errno) << std::endl;
+                    }
+                } else if (event.type == Multiplexer::POLLOUT) {
+                    ntp_packet packet = data[event.fd];
+                    data.erase(event.fd);
+                    // Send resulting packet
+                    ssize_t ntransferred = write(event.fd, &packet, sizeof(packet));
+
+                    if (ntransferred == -1) {
+                        std::cerr << "Error sending response: " << strerror(errno) << std::endl;
+                    } else if (ntransferred != sizeof (packet)) {
+                        std::cerr << "Partial data sent" << std::endl;
+                    }
+                    m_mult.change_polled(event.fd, Multiplexer::POLLIN | Multiplexer::POLLET);
+                }
             }
         }
     }
@@ -155,38 +193,6 @@ void NTPServer::set_nonblocking(int sockfd)
     if (fcntl(sockfd, F_SETFL, options) < 0) {
         std::error_code ec(errno, std::system_category());
         throw std::system_error(ec, "Failed to make socket non-blocking");
-    }
-}
-
-void NTPServer::process_client(int clientfd) const
-{
-    ntp_packet packet = {};
-
-    // Receive client request
-    ssize_t ntransferred = read(clientfd, &packet, sizeof(packet));
-    if (ntransferred == sizeof (packet)) {
-        fill_packet(packet);
-
-        // Send resulting packet
-        ntransferred = write(clientfd, &packet, sizeof(packet));
-
-        if (ntransferred == -1) {
-            std::cerr << "Error sending response: " << strerror(errno) << std::endl;
-        } else if (ntransferred != sizeof (packet)) {
-            std::cerr << "Partial data sent" << std::endl;
-        }
-    } else if (!ntransferred) {
-        std::cout << "Client disconnected" << std::endl;
-        // Unsubscribe
-        if (!m_mult.delete_polled(clientfd)) {
-            std::cerr << "Failed to unsubscribe from client" << std::endl;
-        }
-        if (close(clientfd) == -1) {
-            std::cerr << "Failed to close client socket: " << strerror(errno) << std::endl;
-        }
-    } else {
-        // ignore failed request
-        std::cerr << "Request incomplete or read failed: " << strerror(errno) << std::endl;
     }
 }
 
