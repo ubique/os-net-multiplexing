@@ -18,7 +18,6 @@ int main(int argc, char *argv[]) {
         port = std::atoi(argv[2]);
     }
     client cl;
-    cl.connect_to(server_address, port);
-    cl.start();
+    cl.start(server_address, port);
     return 0;
 }

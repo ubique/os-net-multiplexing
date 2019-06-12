@@ -18,9 +18,7 @@ class client {
 public:
     client();
 
-    void connect_to(const char *hostAddress, const in_port_t port);
-
-    void start();
+    void start(const char *hostAddress, const in_port_t port);
     ssize_t receive_response();
     void do_request(const string& msg);
 
