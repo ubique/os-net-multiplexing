@@ -49,7 +49,7 @@ Multiplexer::~Multiplexer()
 void Multiplexer::add_polled(int fd, int flags) const
 {
     #ifdef __linux__
-    struct epoll_event event;
+    struct epoll_event event = {};
     event.events = 0;
     if (flags & POLLIN) {
         event.events |= EPOLLIN;
@@ -68,7 +68,7 @@ void Multiplexer::add_polled(int fd, int flags) const
     #endif
 
     #ifdef __BSD__
-    struct kevent evset[2];
+    struct kevent evset[2] = {};
     int evcnt = 0, kflags = EV_ADD;
     if (flags & POLLET) {
         kflags |= EV_CLEAR;
