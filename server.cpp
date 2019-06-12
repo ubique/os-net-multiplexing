@@ -74,7 +74,7 @@ int main(int argc, char **argv) {
                 struct sockaddr_in client_addr{};
                 socklen_t address_size = sizeof(client_addr);
 
-                int accept_descriptor = accept(file_descriptor, (struct sockaddr*) &client_addr, &address_size);
+                int accept_descriptor = accept(file_descriptor, (struct sockaddr *) &client_addr, &address_size);
                 if (accept_descriptor == -1) {
                     perror("accept");
                     continue;
@@ -90,24 +90,44 @@ int main(int argc, char **argv) {
             } else {
                 memset(buffer, 0, BUFFER_SIZE);
 
-                int message_len = recv(descriptor, &buffer, sizeof(buffer), 0);
-                if (message_len == -1) {
-                    check_error(epoll_ctl(epoll_descriptor, EPOLL_CTL_DEL, descriptor, NULL), "epoll_ctl");
-                } else {
-                    if (message_len == 0) {
-                        cout << "close client" << endl;
-                    } else {
-                        cout << "message from client= " << descriptor << ": " << buffer << endl;
-                    }
-                    if (send(descriptor, buffer, message_len, 0) == -1) {
-                        perror("send");
-                        check_error(epoll_ctl(epoll_descriptor, EPOLL_CTL_DEL, descriptor, NULL), "epoll_ctl");
+
+                int message_len = 0;
+                int current_recv;
+                while ((current_recv = recv(descriptor, buffer + message_len, sizeof(buffer) - message_len, 0)) > 0) {
+                    message_len += current_recv;
+                    if (buffer[message_len - 1] == '\n') {
+                        break;
                     }
                 }
+                buffer[message_len] = '\0';
+
+
+                if (current_recv == -1) {
+                    perror("recv");
+                    check_error(epoll_ctl(epoll_descriptor, EPOLL_CTL_DEL, descriptor, nullptr), "epoll_ctl");
+                    continue;
+                }
+
+                if (message_len == 0) {
+                    cout << "close client" << endl;
+                } else {
+                    cout << "message from client= " << descriptor << ": " << buffer;
+                }
+
+                int total_send = 0;
+                while (total_send < message_len) {
+                    int status = send(descriptor, buffer + total_send, message_len - total_send, 0);
+                    check_error(status, "send");
+                    if (status == -1) {
+                        perror("send");
+                        check_error(epoll_ctl(epoll_descriptor, EPOLL_CTL_DEL, descriptor, nullptr), "epoll_ctl");
+                    }
+                    total_send += status;
+                }
+
             }
         }
     }
-
 
 
 }
