@@ -14,19 +14,19 @@ int sock, epollfd;
 struct epoll_event event, events[MAX_EVENTS];
 
 void connect(const char *address, const uint16_t port) {
-    sock = socket(AF_INET, SOCK_STREAM, 0);
+    struct sockaddr_in addr;
+    addr.sin_family = AF_INET;
+    addr.sin_port = port;
+//    addr.sin_addr.s_addr = inet_addr(address);
+    addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+
+    sock = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
     if (sock == -1) {
         perror("socket");
         throw std::runtime_error("Can't init socket");
     }
-    struct sockaddr_in addr;
 
-    addr.sin_family = AF_INET;
-    addr.sin_port = port;
-    addr.sin_addr.s_addr = inet_addr(address);
-//    addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-
-    if (connect(sock, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+    if (connect(sock, (struct sockaddr *) &addr, sizeof(addr)) < 0 && errno != EINPROGRESS) {
         perror("connect");
         throw std::runtime_error("Can't make connection");
     }

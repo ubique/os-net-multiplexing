@@ -15,17 +15,23 @@ int listener, epollfd;
 struct epoll_event event, events[MAX_EVENTS];
 
 void bind(const char *address, const uint16_t port) {
-    listener = socket(AF_INET, SOCK_STREAM, 0);
+    struct sockaddr_in addr;
+    addr.sin_family = AF_INET;
+    addr.sin_port = port;
+//    addr.sin_addr.s_addr = inet_addr(address);
+    addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+
+    listener = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
     if (listener == -1) {
         perror("socket");
         throw std::runtime_error("Can't init socket");
     }
-    struct sockaddr_in addr;
 
-    addr.sin_family = AF_INET;
-    addr.sin_port = port;
-    addr.sin_addr.s_addr = inet_addr(address);
-//    addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    int optval = 1;
+    if (setsockopt(listener, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &optval, sizeof(optval)) < 0) {
+        perror("setsockopt");
+        exit(EXIT_FAILURE);
+    }
 
     if (bind(listener, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
         perror("bind");
