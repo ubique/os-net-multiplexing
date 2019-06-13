@@ -62,8 +62,12 @@ void send_and_receive(const fd_wrapper &sender) {
         throw std::runtime_error("Epoll_create1 failed");
     }
 
-    if (fcntl(0, F_SETFL, O_NONBLOCK) == -1) {
+    if (fcntl(STDIN_FILENO, F_SETFL, O_NONBLOCK) == -1) {
         throw std::runtime_error("Can't make stdin nonblock");
+    }
+
+    if (fcntl(STDOUT_FILENO, F_SETFL, O_NONBLOCK) == -1) {
+        throw std::runtime_error("Can't make stdout nonblock");
     }
 
     if (socket_in_progress) {
@@ -145,9 +149,7 @@ void send_and_receive(const fd_wrapper &sender) {
                     break;
                 }
 
-                for (int j = 0; j < bytes_read; ++j) {
-                    std::cout << buf[j] << std::flush;
-                }
+                write(STDOUT_FILENO, buf, bytes_read);
                 sum += bytes_read;
             }
 
