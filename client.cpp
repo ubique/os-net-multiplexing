@@ -11,7 +11,7 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <sys/epoll.h>
-#include <bits/locale_facets.tcc>
+#include <fcntl.h>
 
 #include "fd_wrapper.h"
 
@@ -28,9 +28,11 @@ void print_help() {
     std::cout << "Usage: ./client [port] [address]" << std::endl;
 }
 
+bool socket_in_progress = false;
+
 fd_wrapper open_connection(std::string &address, uint16_t port) {
 
-    fd_wrapper sfd = socket(AF_INET, SOCK_STREAM, 0);
+    fd_wrapper sfd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
     if (sfd == -1) {
         throw std::runtime_error("Can't create socket");
     }
@@ -40,8 +42,12 @@ fd_wrapper open_connection(std::string &address, uint16_t port) {
     addr.sin_port = htons(port);
     addr.sin_addr.s_addr = inet_addr(address.c_str());
 
-    if (connect(sfd.get(), reinterpret_cast<sockaddr *>(&addr), sizeof(addr)) == -1) {
+    if (connect(sfd.get(), reinterpret_cast<sockaddr *>(&addr), sizeof(addr)) == -1 && errno != EINPROGRESS) {
         throw std::runtime_error("Can't connect to the server");
+    }
+
+    if (errno == EINPROGRESS) {
+        socket_in_progress = true;
     }
 
     return sfd;
@@ -54,6 +60,49 @@ void send_and_receive(const fd_wrapper &sender) {
     fd_wrapper epollfd = epoll_create1(0);
     if (epollfd == -1) {
         throw std::runtime_error("Epoll_create1 failed");
+    }
+
+    if (fcntl(0, F_SETFL, O_NONBLOCK) == -1) {
+        throw std::runtime_error("Can't make stdin nonblock");
+    }
+
+    if (socket_in_progress) {
+
+        ev.events = EPOLLOUT;
+        ev.data.fd = sender.get();
+
+        if (epoll_ctl(epollfd.get(), EPOLL_CTL_ADD, sender.get(), &ev) == -1) {
+            throw std::runtime_error("Epoll_ctl add failed");
+        }
+
+        while (true) {
+            int cnt = epoll_wait(epollfd.get(), events, MAX_EVENTS, -1);
+
+            if (cnt == -1) {
+                if (errno == EINTR) {
+                    continue;
+                }
+
+                throw std::runtime_error("Epoll_wait failed");
+            }
+
+
+            int stat = 0;
+            socklen_t len = sizeof(stat);
+            if (getsockopt(sender.get(), SOL_SOCKET, SO_ERROR, &stat, &len) == -1) {
+                throw std::runtime_error("Can't getsockopt");
+            }
+
+            if (stat == 0) {
+                break;
+            } else {
+                throw std::runtime_error("Can't connect to the server");
+            }
+        }
+
+        if (epoll_ctl(epollfd.get(), EPOLL_CTL_DEL, sender.get(), nullptr) == -1) {
+            throw std::runtime_error("Epoll_ctl del failed");
+        }
     }
 
     ev.events = EPOLLIN;
@@ -69,7 +118,6 @@ void send_and_receive(const fd_wrapper &sender) {
     if (epoll_ctl(epollfd.get(), EPOLL_CTL_ADD, 0, &ev) == -1) {
         throw std::runtime_error("Epoll_ctl add failed");
     }
-
 
     char buf[BUF_SIZE];
     int bytes_read;

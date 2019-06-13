@@ -30,7 +30,7 @@ void print_help() {
 
 fd_wrapper start_server(std::string &address, uint16_t port) {
 
-    fd_wrapper sfd = socket(AF_INET, SOCK_STREAM, 0);
+    fd_wrapper sfd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
     if (sfd == -1) {
         throw std::runtime_error("Can't create socket");
     }
@@ -95,14 +95,16 @@ void wait_for_connections(const fd_wrapper &listener) {
             if (events[i].data.fd == listener.get()) {
                 int client = accept4(listener.get(), nullptr, nullptr, SOCK_NONBLOCK);
 
-                if (client == -1) {
-                    throw std::runtime_error("Accept failed");
+                if (client == -1 && errno != EAGAIN) {
+                    print_err("Accept failed");
+                    continue;
                 }
 
                 ev.events = EPOLLIN | EPOLLET;
                 ev.data.fd = client;
                 if (epoll_ctl(epollfd.get(), EPOLL_CTL_ADD, client, &ev) == -1) {
-                    throw std::runtime_error("Epoll_ctl add failed");
+                    print_err("Epoll_ctl add failed");
+                    continue;
                 }
             } else {
                 int client = events[i].data.fd;
