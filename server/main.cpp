@@ -32,7 +32,6 @@ public:
             string query(buffer, buffer + bytes);
             cout << "Client sends: " << client_socket << endl
                  << "    " << query << endl << endl;
-
             if (send(client_socket, buffer, bytes, 0) == -1) {
                 throw HandlerException("Cannot send response.", errno);
             }
@@ -61,7 +60,7 @@ public:
     static const int MAX_PENDING = 228;
 
     explicit ClientAcceptor(in_port_t port) {
-        listen_socket = socket(PF_INET, SOCK_STREAM, 0);
+        listen_socket = socket(PF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0);
         sockaddr_in addr{};
         addr.sin_family = PF_INET;
         addr.sin_port = htons(port);
@@ -117,11 +116,19 @@ public:
 
 
 int main(int argc, char *argv[]) {
-    const in_port_t port = stoi(argv[1]);
-    shared_ptr<IHandler> acceptor(new ClientAcceptor(port));
-    shared_ptr<IHandler> consoleHandler(new ServerConsole());
-    EventManager epollWaiter;
-    epollWaiter.addHandler(acceptor);
-    epollWaiter.addHandler(consoleHandler);
-    epollWaiter.wait();
+    try {
+        const in_port_t port = stoi(argv[1]);
+        shared_ptr<IHandler> acceptor(new ClientAcceptor(port));
+        shared_ptr<IHandler> consoleHandler(new ServerConsole());
+        EventManager epollWaiter;
+        epollWaiter.addHandler(acceptor);
+        epollWaiter.addHandler(consoleHandler);
+        epollWaiter.wait();
+    } catch (HandlerException const &e) {
+        cerr << e.what() << endl;
+    } catch (EventException const &e) {
+        cerr << e.what() << endl;
+    } catch (logic_error const &e) {
+        cerr << "Invalid arguments." << endl;
+    }
 }
