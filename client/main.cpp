@@ -27,7 +27,7 @@ public:
     static const int BUFFER_SIZE = 1024;
 
     Client(const string &host, in_port_t port) {
-        server_socket = socket(PF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
+        server_socket = socket(PF_INET, SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
         if (server_socket == -1) {
             throw HandlerException("Cannot create socket.", errno);
         }
@@ -46,6 +46,7 @@ public:
         if (send(server_socket, message.data(), message.size(), 0) == -1) {
             throw HandlerException("Cannot send message.", errno);
         }
+        currentMessage = message;
     }
 
     void handleData(EventManager &eventManager) override {
@@ -57,24 +58,48 @@ public:
             throw HandlerException("Cannot read message.", errno);
         } else if (bytes == 0) {
             cout << "Server disconnected." << endl << endl;
+            if (isWaiting()) {
+                cout << "Answer was:\n"
+                     << "    " << currentMessage.substr(0, bytesConfirmed) << endl;
+            }
             eventManager.deleteAll();
         } else {
-            string query(buffer, buffer + bytes);
-            cout << "Server answer: " << endl
-                 << "    " << query << endl << endl;
+            string answer(buffer, buffer + bytes);
+            bool sizeCorrect = bytesConfirmed + answer.size() <= currentMessage.size();
+            bool answerCorrect = equal(answer.begin(), answer.end(), currentMessage.begin() + bytesConfirmed);
+            if (!sizeCorrect || !answerCorrect) {
+                string realAnswer = currentMessage.substr(0, bytesConfirmed) + answer;
+                cout << "Unexpected server answer: " << endl
+                     << "    " << realAnswer << endl << endl;
+            } else if (bytesConfirmed + answer.size() == currentMessage.size()) {
+                cout << "Server answer: " << endl
+                     << "    " << currentMessage << endl << endl;
+                currentMessage.clear();
+                bytesConfirmed = 0;
+            } else {
+                bytesConfirmed += answer.size();
+            }
         }
     }
 
     void handleError(EventManager &eventManager) override {
+        const error_t error = getError(server_socket);
         eventManager.deleteAll();
+        if (error != 0) {
+            throw HandlerException("Client failed.", error);
+        }
     }
 
     int getFD() override { return server_socket; }
 
     ~Client() override { close(server_socket); }
 
+    bool isWaiting() { return !currentMessage.empty(); }
+
 private:
     int server_socket;
+    string currentMessage;
+    int bytesConfirmed = 0;
 };
 
 
@@ -92,7 +117,12 @@ public:
         getline(cin, message);
         if (message == "exit") {
             eventManager.deleteAll();
+        } else if (message.empty()) {
+            cout << "Message is empty" << endl;
+        } else if (client->isWaiting()) {
+            cout << "Waiting answer for previous query" << endl;
         } else {
+            cout << "Waiting..." << endl;
             client->sendMessage(message);
         }
     }
@@ -105,10 +135,10 @@ private:
 int main(int argc, char *argv[]) {
     try {
         const in_port_t port = stoi(argv[2]);
-        shared_ptr<IHandler> acceptor(new Client(argv[1], port));
-        shared_ptr<IHandler> consoleHandler(new ClientConsole(acceptor.get()));
+        shared_ptr<IHandler> client(new Client(argv[1], port));
+        shared_ptr<IHandler> consoleHandler(new ClientConsole(client.get()));
         EventManager epollWaiter;
-        epollWaiter.addHandler(acceptor);
+        epollWaiter.addHandler(client);
         epollWaiter.addHandler(consoleHandler);
         epollWaiter.wait();
     } catch (HandlerException const &e) {
