@@ -11,16 +11,17 @@ public:
         event() : fd(-1), type(0) {}
         int fd, type;
     };
-    static const int MAX_EVENTS = 1024;
 
     Multiplexer();
     ~Multiplexer();
 
     void add_polled(int fd, int flags = POLLIN) const;
-    void change_polled(int fd, int flags = POLLIN) const;
     bool delete_polled(int fd) const;
     std::vector<event> get_ready() const;
 private:
+    static const int MAX_EVENTS = 1024;
+    static const int SUPPORTED_TYPES = 2;
+
     int m_pollfd;
 };
 

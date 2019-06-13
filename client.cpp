@@ -53,16 +53,16 @@ void NTPClient::run() const
 
         for (auto event : ready) {
              if (event.fd == m_socketfd) {
+                 m_mult.delete_polled(m_socketfd);
                  if (event.type == Multiplexer::POLLIN) {
                      time_t time = receive_response();
                      if (time) {
                          std::cout << "Time: " << ctime(&time);
                      }
-                     m_mult.delete_polled(m_socketfd);
                  } else if (event.type == Multiplexer::POLLOUT) {
                      send_request(disconnect_requested);
                      if (!disconnect_requested) {
-                         m_mult.change_polled(m_socketfd, Multiplexer::POLLIN);
+                         m_mult.add_polled(m_socketfd, Multiplexer::POLLIN);
                      } else {
                          return;
                      }

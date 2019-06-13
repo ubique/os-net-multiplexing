@@ -111,6 +111,10 @@ NTPServer::~NTPServer()
 
                 log_connection(addr);
             } else { // Client
+                // Unsubscribe
+                if (!m_mult.delete_polled(event.fd)) {
+                    std::cerr << "Failed to unsubscribe from client: " << std::strerror(errno) << std::endl;
+                }
                 if (event.type == Multiplexer::POLLIN) {
                     ntp_packet packet = {};
 
@@ -118,14 +122,10 @@ NTPServer::~NTPServer()
                     ssize_t ntransferred = read(event.fd, &packet, sizeof(packet));
                     if (ntransferred == sizeof (packet)) {
                         fill_packet(packet);
-                        data[event.fd] = packet;
-                        m_mult.change_polled(event.fd, Multiplexer::POLLOUT | Multiplexer::POLLET);
+                        data.insert({event.fd, packet});
+                        m_mult.add_polled(event.fd, Multiplexer::POLLOUT | Multiplexer::POLLET);
                     } else if (!ntransferred) {
                         std::cout << "Client disconnected" << std::endl;
-                        // Unsubscribe
-                        if (!m_mult.delete_polled(event.fd)) {
-                            std::cerr << "Failed to unsubscribe from client" << std::endl;
-                        }
                         if (close(event.fd) == -1) {
                             std::cerr << "Failed to close client socket: " << strerror(errno) << std::endl;
                         }
@@ -134,7 +134,11 @@ NTPServer::~NTPServer()
                         std::cerr << "Request incomplete or read failed: " << strerror(errno) << std::endl;
                     }
                 } else if (event.type == Multiplexer::POLLOUT) {
-                    ntp_packet packet = data[event.fd];
+                    if (data.find(event.fd) == data.end()) {
+                        std::cerr << "The requested fd is unknown to server" << std::endl;
+                        continue;
+                    }
+                    ntp_packet packet = data.at(event.fd);
                     data.erase(event.fd);
                     // Send resulting packet
                     ssize_t ntransferred = write(event.fd, &packet, sizeof(packet));
@@ -144,7 +148,7 @@ NTPServer::~NTPServer()
                     } else if (ntransferred != sizeof (packet)) {
                         std::cerr << "Partial data sent" << std::endl;
                     }
-                    m_mult.change_polled(event.fd, Multiplexer::POLLIN | Multiplexer::POLLET);
+                    m_mult.add_polled(event.fd, Multiplexer::POLLIN | Multiplexer::POLLET);
                 }
             }
         }

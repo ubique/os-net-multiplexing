@@ -68,30 +68,19 @@ void Multiplexer::add_polled(int fd, int flags) const
     #endif
 
     #ifdef __BSD__
-    struct kevent evset[2] = {};
-    int evcnt = 0, kflags = EV_ADD;
+    struct kevent evset[SUPPORTED_TYPES] = {};
+    int kflags = EV_ADD;
     if (flags & POLLET) {
         kflags |= EV_CLEAR;
     }
-    if (flags & POLLIN) {
-        EV_SET(&evset[evcnt++], fd, EVFILT_READ, kflags, 0, 0, NULL);
-    }
-    if (flags & POLLOUT) {
-        EV_SET(&evset[evcnt++], fd, EVFILT_WRITE, kflags, 0, 0, NULL);
-    }
+    EV_SET(&evset[0], fd, EVFILT_READ, kflags | (flags & POLLIN ? EV_ENABLE : EV_DISABLE), 0, 0, NULL);
+    EV_SET(&evset[1], fd, EVFILT_WRITE, kflags | (flags & POLLOUT ? EV_ENABLE : EV_DISABLE), 0, 0, NULL);
 
-    if (kevent(m_pollfd, evset, evcnt, NULL, 0, NULL) == -1) {
+    if (kevent(m_pollfd, evset, SUPPORTED_TYPES, NULL, 0, NULL) == -1) {
         std::error_code ec(errno, std::system_category());
         throw std::system_error(ec, "Failed to add fd to kqueue");
     }
 #endif
-}
-
-void Multiplexer::change_polled(int fd, int flags) const
-{
-    // TODO: use modification APIs
-    delete_polled(fd);
-    add_polled(fd, flags);
 }
 
 bool Multiplexer::delete_polled(int fd) const
@@ -101,10 +90,10 @@ bool Multiplexer::delete_polled(int fd) const
     #endif
 
     #ifdef __BSD__
-    struct kevent evset[2]; // We only support socket r/w
-    EV_SET(&evset[0], fd, EVFILT_READ, EV_DELETE, 0, 0, NULL);
-    EV_SET(&evset[1], fd, EVFILT_WRITE, EV_DELETE, 0, 0, NULL);
-    return kevent(m_pollfd, evset, 2, NULL, 0, NULL) != -1;
+    struct kevent evset[SUPPORTED_TYPES]; // We only support socket r/w
+    EV_SET(&evset[0], fd, EVFILT_READ, EV_DISABLE, 0, 0, NULL);
+    EV_SET(&evset[1], fd, EVFILT_WRITE, EV_DISABLE, 0, 0, NULL);
+    return kevent(m_pollfd, evset, SUPPORTED_TYPES, NULL, 0, NULL) != -1;
     #endif
 }
 
