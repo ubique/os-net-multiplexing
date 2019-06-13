@@ -34,17 +34,19 @@ void EventManager::addHandler(std::shared_ptr<IHandler> const &handler) {
     bool inEvent = eventMask & INPUT_EVENT;
     bool outEvent = eventMask & OUTPUT_EVENT;
 #ifdef __FreeBSD__
-    struct kevent event{};
-    int flags = 0;
     if (inEvent) {
-        flags |= EVFILT_READ;
+        struct kevent event{};
+        EV_SET(&event, fd, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, NULL);
+        if (kevent(epfd, &event, 1, NULL, 0, NULL) == -1) {
+            throw EventException("Cannot add handler.", errno);
+        }
     }
     if (outEvent) {
-        flags |= EVFILT_WRITE;
-    }
-    EV_SET(&event, fd, flags, EV_ADD | EV_ENABLE, 0, 0, NULL);
-    if (kevent(epfd, &event, 1, NULL, 0, NULL) == -1) {
-        throw EventException("Cannot add handler.", errno);
+        struct kevent event{};
+        EV_SET(&event, fd, EVFILT_WRITE, EV_ADD | EV_ENABLE, 0, 0, NULL);
+        if (kevent(epfd, &event, 1, NULL, 0, NULL) == -1) {
+            throw EventException("Cannot add handler.", errno);
+        }
     }
 #else
     struct epoll_event event{};
@@ -84,6 +86,8 @@ void EventManager::wait() {
 #ifdef __FreeBSD__
                 auto handler = handlers[events[i].ident];
                 bool isError = events[i].flags & EV_ERROR;
+                bool isInput = events[i].filter == EVFILT_READ;
+                bool isOutput = events[i].filter == EVFILT_WRITE;
 #else
                 auto handler = handlers[events[i].data.fd];
                 bool isError = events[i].events & EPOLLERR;
