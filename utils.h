@@ -14,8 +14,8 @@ void send_message(std::string message, int fd) {
     }
 }
 
-size_t receive_message(int fd, char *buffer, size_t buffer_size) {
-    size_t received = 0;
+ssize_t receive_message(int fd, char *buffer, size_t buffer_size) {
+    ssize_t received = 0;
     char last_received = 'a';
 
     while (last_received != 3) {

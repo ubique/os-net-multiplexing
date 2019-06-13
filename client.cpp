@@ -27,7 +27,8 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    int fd = socket(AF_INET, SOCK_STREAM, 0);
+    file_descriptor fd;
+    fd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
 
     if (fd == -1) {
         perror("Can't create socket");
@@ -43,17 +44,19 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    if (connect(fd, (sockaddr *) (&server), sizeof(server)) == -1) {
+    if (connect(fd, (sockaddr *) (&server), sizeof(server)) < 0 && errno != EINPROGRESS) {
         perror("Can't connect.");
         exit(EXIT_FAILURE);
     }
 
     file_descriptor epolld;
     epolld = epoll_create(1);
-    struct epoll_event writer_event, reader_event, events[MAX_EPOLL_EVENTS];
+    struct epoll_event writer_event, reader_event;
+    struct epoll_event events[MAX_EPOLL_EVENTS];
     writer_event.events = EPOLLOUT;
     writer_event.data.fd = fd;
-    reader_event.events = EPOLLOUT;
+
+    reader_event.events = EPOLLIN;
     reader_event.data.fd = fd;
     if (epoll_ctl(epolld, EPOLL_CTL_ADD, fd, &writer_event) < 0) {
         error("Can't add descriptor to epoll");
@@ -88,7 +91,6 @@ int main(int argc, char *argv[]) {
             }
         }
 
-
         if (epoll_ctl(epolld, EPOLL_CTL_MOD, fd, &reader_event) < 0) {
             error("Can't modify descriptor to read mode");
         }
@@ -102,7 +104,7 @@ int main(int argc, char *argv[]) {
             int currFd = events[i].data.fd;
 
             if (currFd == fd) {
-                ssize_t len = receive_message(fd,buffer, BUFFER_SIZE);//recv(fd, buffer, BUFFER_SIZE, 0);
+                ssize_t len = receive_message(fd, buffer, BUFFER_SIZE);
                 if (len == -1) {
                     perror("Can't read response.");
                     continue;
