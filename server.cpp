@@ -18,11 +18,29 @@ void printErr(const std::string& message) {
 
 void printUsage() {
     printf("Usage: <port>\n"
+           "Server is running on default\n"
            "Default port: 8080\n\n");
 }
 
 void printGreetings() {
     printf("Echo server is started.\n\n");
+}
+
+
+void setSocketNonBlocking(int socket) {
+    if (fcntl(socket, F_SETFL, fcntl(socket, F_GETFD, 0) | O_NONBLOCK) < 0) {
+        printErr("Unable to set socket non-blocking");
+        exit(EXIT_FAILURE);
+    }
+}
+
+
+void setSocketOpt(int socket) {
+    int opt = 1;
+    if (setsockopt(socket, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt)) < 0) {
+        printErr("Unable to set socket options");
+        exit(EXIT_FAILURE);
+    }
 }
 
 int openSocket() {
@@ -32,6 +50,8 @@ int openSocket() {
         printErr("Unable to open socket");
         exit(EXIT_FAILURE);
     }
+
+    setSocketOpt(openedSocket);
 
     return openedSocket;
 }
@@ -118,13 +138,6 @@ void sendMessage(int socket) {
     close(socket);
 }
 
-void setSocketNonBlocking(int socket) {
-    if (fcntl(socket,F_SETFL,fcntl(socket,F_GETFD,0) | O_NONBLOCK) < 0){
-        printErr("Unable to set socket non-blocking");
-        exit(EXIT_FAILURE);
-    }
-}
-
 
 void echo(int listener, int port) {
     setSocketNonBlocking(listener);
@@ -170,6 +183,8 @@ int main(int argc, char** argv) {
 
     if (argc == 2) {
         port = atoi(argv[1]);
+    } else {
+        printUsage();
     }
 
     int listener = openSocket();

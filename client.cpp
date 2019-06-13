@@ -29,6 +29,14 @@ void printGreetings() {
     printf("Echo client greets you!\n\n");
 }
 
+void setSocketOpt(int socket) {
+    int opt = 1;
+    if (setsockopt(socket, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt)) < 0) {
+        printErr("Unable to set socket options");
+        exit(EXIT_FAILURE);
+    }
+}
+
 int openSocket() {
     int openedSocket = socket(PROTOCOL_FAMILY, SOCK_STREAM, 0);
 
@@ -36,6 +44,8 @@ int openSocket() {
         printErr("Unable to open socket");
         exit(EXIT_FAILURE);
     }
+
+    setSocketOpt(openedSocket);
 
     return openedSocket;
 }
@@ -47,7 +57,7 @@ void connect(int socket, int port, int address) {
     serverAddress.sin_port = htons(port);
     serverAddress.sin_family = PROTOCOL_FAMILY;
 
-    if (connect(socket, reinterpret_cast<sockaddr*>(&serverAddress), sizeof(sockaddr_in)) < 0) {
+    if (connect(socket, reinterpret_cast<sockaddr*>(&serverAddress), sizeof(sockaddr_in)) < 0 && errno != EINPROGRESS) {
         printErr("Unable to connect client");
         exit(EXIT_FAILURE);
     }
@@ -96,9 +106,9 @@ void respond(int socket, std::string& msg) {
     printf("Server reply: %s\n", reply);
 }
 
+
 int main(int argc, char** argv) {
     printGreetings();
-    printUsage();
 
     int port = PORT;
     int address = inet_addr(IP);
@@ -116,7 +126,7 @@ int main(int argc, char** argv) {
             break;
         }
         default:
-            break;
+            printUsage();
     }
 
     int socket = openSocket();
