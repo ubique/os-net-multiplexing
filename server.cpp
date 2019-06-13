@@ -113,7 +113,7 @@ NTPServer::~NTPServer()
             } else { // Client
                 // Unsubscribe
                 if (!m_mult.delete_polled(event.fd)) {
-                    std::cerr << "Failed to unsubscribe from client: " << std::strerror(errno) << std::endl;
+                    std::cerr << "Failed to unsubscribe from client: " << strerror(errno) << std::endl;
                 }
                 if (event.type == Multiplexer::POLLIN) {
                     ntp_packet packet = {};
