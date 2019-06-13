@@ -19,7 +19,7 @@ public:
         cout << "Client connected: " << fd << endl << endl;
     }
 
-    void handleData(EventManager &eventManager) override {
+    void handleInput(EventManager &eventManager) override {
         uint8_t buffer[BUFFER_SIZE];
         const int bytes = read(client_socket, buffer, BUFFER_SIZE);
 
@@ -30,11 +30,10 @@ public:
             eventManager.deleteHandler(client_socket);
         } else {
             string query(buffer, buffer + bytes);
-            cout << "Client sends: " << client_socket << endl
+            cout << "Data from client: " << client_socket << endl
                  << "    " << query << endl << endl;
-            if (send(client_socket, buffer, bytes, 0) == -1) {
-                throw HandlerException("Cannot send response.", errno);
-            }
+            currentMessage += query;
+            eventManager.resetHandler(getFD());
         }
     }
 
@@ -46,12 +45,29 @@ public:
         }
     }
 
+    void handleOutput(EventManager &eventManager) override {
+        if (bytesSent == currentMessage.size()) {
+            return;
+        }
+        int sent = write(client_socket,
+                         currentMessage.data() + bytesSent,
+                         currentMessage.size() - bytesSent);
+        if (sent == -1) {
+            throw HandlerException("Cannot send response.", errno);
+        }
+        bytesSent += sent;
+    }
+
+    int getFlags() override { return EventManager::INPUT_EVENT | EventManager::OUTPUT_EVENT; }
+
     int getFD() override { return client_socket; }
 
     ~ClientHandler() override { close(client_socket); }
 
 private:
     int client_socket;
+    string currentMessage;
+    int bytesSent = 0;
 };
 
 
@@ -71,9 +87,10 @@ public:
         if (listen(listen_socket, MAX_PENDING) == -1) {
             throw HandlerException("Cannot listen.", errno);
         }
+        cout << "Server started on port " << port << endl;
     }
 
-    void handleData(EventManager &eventManager) override {
+    void handleInput(EventManager &eventManager) override {
         sockaddr_in clientAddr{};
         socklen_t len;
         const int client_socket = accept(listen_socket, (sockaddr *) &clientAddr, &len);
@@ -84,6 +101,7 @@ public:
         fcntl(client_socket, F_SETFL, flags | O_NONBLOCK);
         shared_ptr<IHandler> handler(new ClientHandler(client_socket));
         eventManager.addHandler(handler);
+        cout << "New client connected. Client's file descriptor: " << client_socket << endl;
     }
 
     void handleError(EventManager &eventManager) override {
@@ -94,9 +112,11 @@ public:
         }
     }
 
+    int getFlags() override { return EventManager::INPUT_EVENT; }
+
     int getFD() override { return listen_socket; }
 
-    ~ClientAcceptor() override { close(listen_socket); }
+    ~ClientAcceptor() override = default;
 
 private:
     int listen_socket;
@@ -105,7 +125,7 @@ private:
 
 class ServerConsole : public ConsoleHandler {
 public:
-    void handleData(EventManager &eventManager) override {
+    void handleInput(EventManager &eventManager) override {
         std::string command;
         std::cin >> command;
         if (command == "exit") {

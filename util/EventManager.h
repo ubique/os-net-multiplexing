@@ -50,11 +50,15 @@ public:
 
 class EventManager;
 
+
 class IHandler {
 public:
-    virtual void handleData(EventManager &eventManager) = 0;
+    virtual void handleInput(EventManager &eventManager) = 0;
     virtual void handleError(EventManager &eventManager) = 0;
     virtual int getFD() = 0;
+    virtual int getFlags() = 0;
+
+    virtual void handleOutput(EventManager &eventManager) {}
 
     virtual ~IHandler() = default;
 };
@@ -62,11 +66,16 @@ public:
 
 class EventManager {
 public:
+    static const int OUTPUT_EVENT = 1;
+    static const int INPUT_EVENT = 2;
+
     EventManager();
 
     void addHandler(const std::shared_ptr<IHandler> &handler);
 
     void deleteHandler(int fd);
+
+    void resetHandler(int fd);
 
     void deleteAll();
 

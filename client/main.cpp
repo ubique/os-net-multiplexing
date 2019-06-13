@@ -42,14 +42,12 @@ public:
         }
     }
 
-    void sendMessage(string const &message) {
-        if (send(server_socket, message.data(), message.size(), 0) == -1) {
-            throw HandlerException("Cannot send message.", errno);
-        }
+    void sendMessage(string const &message, EventManager &eventManager) {
         currentMessage = message;
+        eventManager.resetHandler(getFD());
     }
 
-    void handleData(EventManager &eventManager) override {
+    void handleInput(EventManager &eventManager) override {
         uint8_t buffer[BUFFER_SIZE];
         const int bytes = read(server_socket, buffer, BUFFER_SIZE);
 
@@ -65,7 +63,7 @@ public:
             eventManager.deleteAll();
         } else {
             string answer(buffer, buffer + bytes);
-            bool sizeCorrect = bytesConfirmed + answer.size() <= currentMessage.size();
+            bool sizeCorrect = bytesConfirmed + answer.size() <= bytesSent;
             bool answerCorrect = equal(answer.begin(), answer.end(), currentMessage.begin() + bytesConfirmed);
             if (!sizeCorrect || !answerCorrect) {
                 string realAnswer = currentMessage.substr(0, bytesConfirmed) + answer;
@@ -76,9 +74,33 @@ public:
                      << "    " << currentMessage << endl << endl;
                 currentMessage.clear();
                 bytesConfirmed = 0;
+                bytesSent = 0;
             } else {
                 bytesConfirmed += answer.size();
             }
+        }
+    }
+
+    void handleOutput(EventManager &eventManager) override {
+        if (!connected) {
+            const error_t error = getError(server_socket);
+            if (error == 0) {
+                connected = true;
+                cout << "Connected to server." << endl;
+            } else {
+                throw HandlerException("Cannot connect to server.", errno);
+            }
+        } else {
+            if (bytesSent == currentMessage.size()) {
+                return;
+            }
+            int sent = write(server_socket,
+                             currentMessage.data() + bytesSent,
+                             currentMessage.size() - bytesSent);
+            if (sent == -1) {
+                throw HandlerException("Cannot send message.", errno);
+            }
+            bytesSent += sent;
         }
     }
 
@@ -90,6 +112,8 @@ public:
         }
     }
 
+    int getFlags() override { return EventManager::INPUT_EVENT | EventManager::OUTPUT_EVENT; }
+
     int getFD() override { return server_socket; }
 
     ~Client() override { close(server_socket); }
@@ -98,8 +122,10 @@ public:
 
 private:
     int server_socket;
+    bool connected = false;
     string currentMessage;
     int bytesConfirmed = 0;
+    int bytesSent = 0;
 };
 
 
@@ -112,7 +138,7 @@ public:
         }
     }
 
-    void handleData(EventManager &eventManager) override {
+    void handleInput(EventManager &eventManager) override {
         std::string message;
         getline(cin, message);
         if (message == "exit") {
@@ -123,7 +149,7 @@ public:
             cout << "Waiting answer for previous query" << endl;
         } else {
             cout << "Waiting..." << endl;
-            client->sendMessage(message);
+            client->sendMessage(message, eventManager);
         }
     }
 

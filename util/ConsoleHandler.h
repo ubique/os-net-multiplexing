@@ -15,6 +15,8 @@ public:
         }
     }
 
+    int getFlags() override { return EventManager::INPUT_EVENT; }
+
     int getFD() override { return STDIN_FILENO; }
 
     ~ConsoleHandler() override = default;

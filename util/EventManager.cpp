@@ -8,7 +8,9 @@
 #ifdef __FreeBSD__
 #include <sys/event.h>
 #else
+
 #include <sys/epoll.h>
+
 #endif
 
 
@@ -28,16 +30,31 @@ EventManager::EventManager() {
 
 void EventManager::addHandler(std::shared_ptr<IHandler> const &handler) {
     int fd = handler->getFD();
+    int eventMask = handler->getFlags();
+    bool inEvent = eventMask & INPUT_EVENT;
+    bool outEvent = eventMask & OUTPUT_EVENT;
 #ifdef __FreeBSD__
     struct kevent event{};
-    EV_SET(&event, fd, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, NULL);
+    int flags = 0;
+    if (inEvent) {
+        flags |= EVFILT_READ;
+    }
+    if (outEvent) {
+        flags |= EVFILT_WRITE;
+    }
+    EV_SET(&event, fd, flags, EV_ADD | EV_ENABLE, 0, 0, NULL);
     if (kevent(epfd, &event, 1, NULL, 0, NULL) == -1) {
         throw EventException("Cannot add handler.", errno);
     }
 #else
     struct epoll_event event{};
     event.data.fd = fd;
-    event.events |= EPOLLIN;
+    if (inEvent) {
+        event.events |= EPOLLIN;
+    }
+    if (outEvent) {
+        event.events |= EPOLLOUT | EPOLLET;
+    }
     if (epoll_ctl(epfd, EPOLL_CTL_ADD, fd, &event) == -1) {
         throw EventException("Cannot add handler.", errno);
     }
@@ -70,11 +87,15 @@ void EventManager::wait() {
 #else
                 auto handler = handlers[events[i].data.fd];
                 bool isError = events[i].events & EPOLLERR;
+                bool isInput = events[i].events & EPOLLIN;
+                bool isOutput = events[i].events & EPOLLOUT;
 #endif
                 if (isError) {
                     handler->handleError(*this);
-                } else {
-                    handler->handleData(*this);
+                } else if (isInput) {
+                    handler->handleInput(*this);
+                } else if (isOutput) {
+                    handler->handleOutput(*this);
                 }
             } catch (HandlerException const &e) {
                 std::cerr << e.what() << std::endl;
@@ -86,6 +107,12 @@ void EventManager::wait() {
 void EventManager::deleteHandler(int fd) {
     unregisterHandler(fd);
     handlers.erase(fd);
+}
+
+void EventManager::resetHandler(int fd) {
+    auto handler = handlers[fd];
+    unregisterHandler(fd);
+    addHandler(handler);
 }
 
 void EventManager::deleteAll() {
