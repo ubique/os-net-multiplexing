@@ -27,7 +27,7 @@ public:
     static const int BUFFER_SIZE = 1024;
 
     Client(const string &host, in_port_t port) {
-        server_socket = socket(PF_INET, SOCK_STREAM, 0);
+        server_socket = socket(PF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
         if (server_socket == -1) {
             throw HandlerException("Cannot create socket.", errno);
         }
@@ -36,7 +36,9 @@ public:
         addr.sin_addr.s_addr = hostnameToIp(host);
         addr.sin_port = htons(port);
         if (connect(server_socket, (sockaddr *) &addr, sizeof(addr)) == -1) {
-            throw HandlerException("Cannot connect to server.", errno);
+            if (errno != EINPROGRESS) {
+                throw HandlerException("Cannot connect to server.", errno);
+            }
         }
     }
 
