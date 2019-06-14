@@ -45,13 +45,17 @@ int wait(int *buff, int multiplexer, int *flags) {
 	int numb = 0;
 	#ifdef __linux
 	numb = epoll_wait(multiplexer, event_list, EVENT_BUFF_SIZE, -1);
-	#elif __APPLE__ 
-	numb = kevent(multiplexer, NULL, 0, EVENT_BUFF_SIZE, NULL);
-	#endif
 	for (int i = 0; i < numb; ++i) {
 		buff[i] = event_list[i].data.fd;
 		flags[i] = event_list[i].events & EPOLLOUT;
 	}
+	#elif __APPLE__ 
+	numb = kevent(multiplexer, NULL, 0, EVENT_BUFF_SIZE, NULL);
+	for (int i = 0; i < numb; ++i) {
+		buff[i] = event_list[i].ident;
+		flags[i] = event_list[i].filter == EVFILT_WRITE;
+	}
+	#endif
 	return numb;
 }
 
@@ -68,10 +72,18 @@ int add(int multiplexer, int sock, int shouldOutput) {
 		exit(1);
 	}
 	#elif __APPLE__
-	EV_SET(&kevent_struct, sock, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, NULL);
-	if (kevent(multiplexer, &kevent_struct, 1, NULL, 0, NULL) < 0) {
-		fprintf(stderr, "kevent error\n");
-		exit(1);
+	if (shouldOutput) {
+		EV_SET(&kevent_struct, sock, EVFILT_READ | EVFILT_WRITE, EV_ADD | EV_ENABLE, 0, 0, NULL);
+		if (kevent(multiplexer, &kevent_struct, 1, NULL, 0, NULL) < 0) {
+			fprintf(stderr, "kevent error\n");
+			exit(1);
+		}
+	} else {
+		EV_SET(&kevent_struct, sock, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, NULL);
+		if (kevent(multiplexer, &kevent_struct, 1, NULL, 0, NULL) < 0) {
+			fprintf(stderr, "kevent error\n");
+			exit(1);
+		}
 	}
 	#endif
 	return 0;
