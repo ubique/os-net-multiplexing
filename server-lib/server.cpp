@@ -66,33 +66,6 @@ void server::run() {
         }
     }
 }
-
-
-void server::fillAddress(std::string const &address,int port) {
-    server_in.sin_family = AF_INET;
-    server_in.sin_addr.s_addr = inet_addr(address.data());
-    server_in.sin_port = htons(static_cast<uint16_t>(port));
-}
-
-void server::add_to_epoll(int sock_fd, uint32_t events) {
-    epoll_event event;
-    event.data.fd = sock_fd;
-    event.events = events;
-
-    if (epoll_ctl(epoll_fd.getDescriptor(), EPOLL_CTL_ADD, sock_fd, &event) == -1) {
-        throw server_exception("Couldn't add descriptor to epoll");
-    }
-
-}
-
-void server::remove_from_epoll(int sock_fd) {
-    if (epoll_ctl(epoll_fd.getDescriptor(), EPOLL_CTL_DEL, sock_fd, nullptr) == -1) {
-        throw server_exception("Couldn't remove descriptor from epoll");
-    }
-
-    sockets.erase(sock_fd);
-}
-
 std::string server::read(int desc) {
     std::vector<char> buffer;
     size_t tries_to_read = TRIES_NUMBER;
@@ -130,4 +103,27 @@ void server::send(int desc, std::string const& message) {
         throw server_exception("Unable to send respond to " + std::to_string(desc));
     }
 }
+void server::fillAddress(std::string const &address,int port) {
+    server_in.sin_family = AF_INET;
+    server_in.sin_addr.s_addr = inet_addr(address.data());
+    server_in.sin_port = htons(static_cast<uint16_t>(port));
+}
 
+void server::add_to_epoll(int sock_fd, uint32_t events) {
+    epoll_event event;
+    event.data.fd = sock_fd;
+    event.events = events;
+    if (epoll_ctl(epoll_fd.getDescriptor(), EPOLL_CTL_ADD, sock_fd, &event) == -1) {
+        throw server_exception("Couldn't add descriptor to epoll");
+    }
+
+}
+
+
+
+void server::remove_from_epoll(int sock_fd) {
+    if (epoll_ctl(epoll_fd.getDescriptor(), EPOLL_CTL_DEL, sock_fd, nullptr) == -1) {
+        throw server_exception("Couldn't remove descriptor from epoll");
+    }
+    sockets.erase(sock_fd);
+}
