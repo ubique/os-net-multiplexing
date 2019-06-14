@@ -79,7 +79,7 @@ struct server {
 
 private:
     std::string read(int desc);
-    void send(int desc, std::string const& message);
+    void send(int sockFd, std::string const& message);
     void fillAddress(std::string const &address,int port);
     void remove_from_epoll(int sock_fd);
     void add_to_epoll(int sock_fd, uint32_t events);

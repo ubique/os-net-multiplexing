@@ -89,18 +89,21 @@ std::string server::read(int desc) {
     return res;
 }
 
-void server::send(int desc, std::string const& message) {
+void server::send(int sockFd, std::string const& message) {
+    if(sockets.count(sockFd) == 0){
+        return;
+    }
     ssize_t processed = 0;
     size_t tries_to_send = TRIES_NUMBER;
     while (processed < message.size() && tries_to_send--) {
-        ssize_t stat = ::write(desc, message.data() + processed, static_cast<size_t>(message.size() - processed));
+        ssize_t stat = ::write(sockFd, message.data() + processed, static_cast<size_t>(message.size() - processed));
         if (stat != -1) {
             processed += stat;
         }
     }
     if (processed == 0) {
-        remove_from_epoll(desc);
-        throw server_exception("Unable to send respond to " + std::to_string(desc));
+        remove_from_epoll(sockFd);
+        throw server_exception("Unable to send respond to " + std::to_string(sockFd));
     }
 }
 void server::fillAddress(std::string const &address,int port) {
