@@ -48,12 +48,16 @@ private:
 
 class client {
 public:
+     void send(int desc, std::string const& message);
     client(std::string const &address, std::string const &port_representation);
     void run();
 private:
+    void insrt_epoll(int fd, uint32_t events);
     void fillAddress(std::string const &address,int port);
 
 private:
+    bool isInterrupted = false;
+    bool connected;
     wrapper socket_fd,epollfd;
     struct sockaddr_in server;
     static const size_t BF_SZ = 1024;
