@@ -3,5 +3,5 @@ project(Task6)
 
 set(CMAKE_CXX_STANDARD 14)
 
-add_executable(Task6-client client.cpp utils.h utils.cpp)
-add_executable(Task6-server server.cpp utils.h utils.cpp)
+add_executable(Task6_client client.cpp utils.cpp)
+add_executable(Task6_server server.cpp utils.cpp)

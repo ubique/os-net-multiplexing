@@ -4,56 +4,84 @@
 
 #include "utils.h"
 
-#include <iostream>
-#include <cstring>
-#include <sys/socket.h>
-#include <netinet/in.h>
+void check_error(int rc, const string &additional) {
+    if (rc < 0) {
+        int error = errno;
+        cout << additional << "\n";
+        cout << strerror(error) << "\n";
+        exit(0);
+    }
+}
 
-using std::cout;
-using std::string;
+void check_non_stop(int rc, const std::string& additional) {
+    if (rc < 0) {
+        int error = errno;
+        cout << additional << "\n";
+        cout << strerror(error) << "\n";
+    }
+}
 
-
-void fun_send(char *what, int amount, int where, string message) {
-    int counter = 0;
-    while (counter < amount) {
-        int sent = send(where, what + counter, amount - counter, MSG_NOSIGNAL);
+void fun_send(int fd, char* what, int size, string message) {
+    int counter = 1;
+    int sent_sum = 0;
+    while (sent_sum != size && counter > 0) {
+        int counter = send(fd, what + sent_sum, size - sent_sum, MSG_NOSIGNAL);
 //        int sent = send(where, what + counter, amount - counter, SO_NOSIGPIPE);
-        if (sent == -1) {
+        if (counter == -1) {
             cout << "error occurred with sent in " << message << "\n";
             cout << strerror(errno) << "\n";
             exit(0);
         }
-        counter += sent;
+        sent_sum += counter;
     }
 }
 
-void fun_recv(char *where, int amount, int from, string message) {
-    int counter = 0;
-    while(counter < amount) {
-        int received = recv(from, where + counter, amount - counter, MSG_NOSIGNAL);
+bool fun_send_client(int fd, char* what, int size, string message) {
+    int counter = 1;
+    int sent_sum = 0;
+    while (sent_sum != size && counter > 0) {
+        int counter = send(fd, what + sent_sum, size - sent_sum, MSG_NOSIGNAL);
+//        int sent = send(where, what + counter, amount - counter, SO_NOSIGPIPE);
+        sent_sum += counter;
+    }
+    if (counter < 0) {
+        return true;
+    }
+    return false;
+}
+
+// fix it!!!!
+void fun_recv(int fd, char* what, string message) {
+    int counter = 1;
+    int sent_sum = 0;
+    while((counter = recv(fd, what + sent_sum, BUF_SIZE - sent_sum, MSG_NOSIGNAL)) > 0) {
 //        int received = recv(from, where + counter, amount - counter, SO_NOSIGPIPE);
-        if (received == -1) {
+        if (counter == -1) {
             cout << "error occurred with recv "<< message << "\n";
             cout << strerror(errno) << "\n";
             exit(0);
         }
-        counter += received;
+        if (*(what + sent_sum - 1) == '\n') {
+            break;
+        }
+        sent_sum += counter;
     }
 }
 
-void add_new_client(const int* master, sockaddr_in* client, int* poll_s, socklen_t* size_s) {
-    int s = accept(*master, (sockaddr *) (&client), size_s);
-    is_failure(s, "accept");
-    struct epoll_event epoll_event;
-    epoll_event.data.fd = s;
-    epoll_event.events = EPOLLIN;
-    is_failure(epoll_ctl(*poll_s, EPOLL_CTL_ADD, s, &epoll_event), "epoll_ctl");
+bool fun_recv_client(int fd, char* what, string message) {
+    int counter = 1;
+    int sent_sum = 0;
+    while((counter = recv(fd, what + sent_sum, BUF_SIZE - sent_sum, MSG_NOSIGNAL)) > 0) {
+//        int received = recv(from, where + counter, amount - counter, SO_NOSIGPIPE);
+        if (*(what + sent_sum - 1) == '\n') {
+            break;
+        }
+        sent_sum += counter;
+    }
+    if (counter < 0) {
+        return true;
+    }
+    return false;
 }
 
-void is_failure(int rc, const string &problem_name) {
-    if (rc == -1) {
-        cout << problem_name << "\n";
-        cout << "error occurred with " << strerror(errno) << "\n";
-        exit(EXIT_FAILURE);
-    }
-}
+

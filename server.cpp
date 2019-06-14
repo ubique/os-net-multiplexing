@@ -2,92 +2,85 @@
 // Created by Yaroslav on 04/06/2019.
 //
 
-#include<bits/stdc++.h>
-#include <sys/types.h>
+#include <bits/stdc++.h>
 #include <sys/socket.h>
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#include <iostream>
-#include <errno.h>
-#include <zconf.h>
-#include <cstring>
-#include <string>
-#include <vector>
 #include <sys/epoll.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+#include <fcntl.h>
 #include "utils.h"
 
-using std::cout;
-using std::endl;
-using std::string;
-using std::vector;
-
-const int MAX_POLL_SIZE = 16;
+using namespace std;
 
 void wrong_usage() {
     cout << "Usage: ./Task5_client [address]";
 }
 
-int main(int argc, char **argv) {
+int main(int argc, char *argv[])
+{
     if (argc != 2) {
         wrong_usage();
-        return 0;
+        exit(EXIT_FAILURE);
     }
-    int master = socket(AF_INET, SOCK_STREAM, 0);
-    is_failure(master, "socket");
-    struct sockaddr_in server{}, client{};
-    socklen_t size_s = sizeof(sockaddr_in);
 
-    server.sin_family = AF_INET;
-    server.sin_port = htons(SERVER_PORT);
+    struct sockaddr_in serv_addr;
+    memset(&serv_addr, 0, sizeof serv_addr);
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_port = htons(SERVER_PORT);
+    check_error(inet_pton(AF_INET, argv[1], &serv_addr.sin_addr),"inet_pton");
+    int master = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
+    int true_var = 1;
+    check_error(setsockopt(master, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &true_var, sizeof true_var),"setsockopt");
+    check_error(bind(master, (struct sockaddr*)  &serv_addr, sizeof serv_addr),"bind");
+    check_error(listen(master, 10),"listen");
+    int epollCreate = epoll_create(1);
+    struct epoll_event event, events[MAX_EPOLL_EVENTS];
+    event.events = EPOLLIN;
+    event.data.fd = master;
+    check_error(epoll_ctl(epollCreate, EPOLL_CTL_ADD, master, &event),"epoll_ctl");
+    while (true) {
+        int epollWait = epoll_wait(epollCreate, events, MAX_EPOLL_EVENTS, -1);
+        check_error(epollWait,"Waiting for output failed");
+        for (int i = 0; i < epollWait; i++) {
+            int current = events[i].data.fd;
+            if (current == master) {
+                struct sockaddr_in cli_addr;
+                socklen_t addrlen = sizeof cli_addr;
+                int new_fd = accept(master, (struct sockaddr*) &cli_addr, &addrlen);;
+                if (new_fd < 0) {
+                    perror("Accept error");
+                    continue;
+                }
 
-    is_failure(inet_pton(AF_INET, argv[1], &server.sin_addr), "inet_pton");
-    is_failure(bind(master, (sockaddr *) (&server), size_s), "bind");
-    is_failure(listen(master, SOMAXCONN), "listen");
 
-    int poll_s = epoll_create1(0);
-    is_failure(poll_s, "epoll_create1");
-    struct epoll_event Event;
-
-    Event.data.fd = master;
-    Event.events = EPOLLIN;
-    is_failure(epoll_ctl(poll_s, EPOLL_CTL_ADD, master, &Event), "epoll_ctl");
-    for(;;) {
-        struct epoll_event Events[MAX_POLL_SIZE];
-        int limit = epoll_wait(poll_s, Events, MAX_POLL_SIZE, -1);
-        is_failure(limit, "epoll_wait");
-        for (int i = 0; i < limit; i++) {
-            if (Events[i].data.fd == master) {
-                add_new_client(&master, &client, &poll_s, &size_s);
+                int flags = fcntl(new_fd, F_GETFL, 0);
+                flags |= O_NONBLOCK;
+                fcntl(new_fd, F_SETFL, flags);
+                event.data.fd = new_fd;
+                event.events = EPOLLIN | EPOLLOUT;
+                if (epoll_ctl(epollCreate, EPOLL_CTL_ADD, new_fd, &event) < 0) {
+                    perror("Cannot add descriptor to epoll");
+                    if (close(new_fd) < 0)
+                        perror("Cannot close descriptor");
+                }
             } else {
-                int s = Events[i].data.fd;
-                char size;
-                char code;
-                fun_recv(&size, 1, s, "server");
-                code = size % 2 == 1 ? 1 : 0;
-                size = size / 2;
-                cout << static_cast<int>(size) << endl;
-                vector<char> data(size);
-                vector<char> copy(size);
-                fun_recv(&data[0], size, s, "server");
-                cout << &data[0] << endl;
-                for (int i = 0; i < data.size(); i++) {
-                    copy[i] = data[i];
-                }
-                copy[size - 1] = '\0';
-
-                if (code == 1) {
-                    for (int i = 0; i < size - 1; i++) {
-                        copy[i]+=1;
+                if ((events[i].events & EPOLLIN) && (events[i].events & EPOLLOUT)) {
+                    char buf[BUF_SIZE + 1];
+                    fun_recv(current,buf,"server");
+                    string message;
+                    message = string(buf);
+                    for (auto& i: message) {
+                        i++;
                     }
-                } else {
-                    for (int i = 0; i < size - 1; i++) {
-                        copy[i]-=1;
-                    }
+                    fun_send(current, const_cast<char*>(message.data()),message.length(), "server");
+                    event.data.fd = current;
+                    check_non_stop(epoll_ctl(epollCreate, EPOLL_CTL_DEL, current, &event), "epoll_ctl");
+                    check_non_stop(close(current), "close");
+                    if (strcmp(buf, "exit") == 0)
+                        return 0;
                 }
-                fun_send(&copy[0], size, s, "server");
-                is_failure(close(s), "close");
             }
         }
-
     }
 }

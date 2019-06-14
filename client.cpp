@@ -1,78 +1,79 @@
 //
 // Created by Yaroslav on 04/06/2019.
 //
-//#include<bits/stdc++.h>
-#include <sys/types.h>
+#include <bits/stdc++.h>
 #include <sys/socket.h>
-#include <arpa/inet.h>
+#include <sys/epoll.h>
 #include <netinet/in.h>
-#include <iostream>
-#include <zconf.h>
-#include <vector>
-#include <chrono>
-#include <cstring>
+#include <arpa/inet.h>
+#include <unistd.h>
 #include "utils.h"
 
-using std::cout;
-using std::endl;
-using std::string;
-using std::vector;
 
 void wrong_usage() {
-    cout << "Usage: ./Task5_client [address] [message] ['code' or 'decode']";
+    cout << "Usage: ./Task5_client [address] [message]";
 }
 
-void print_vec(const vector<char>& vec, int size) {
-    for (int i = 0; i < size; i++) {
-        cout << vec[i];
-    }
-    cout << "\n";
-}
-
-int main(int argc, char **argv) {
-    if (argc != 4) {
+int main(int argc, char *argv[])
+{
+    if (argc != 3) {
         wrong_usage();
-        return 0;
+        exit(EXIT_FAILURE);
     }
     string name = argv[2];
-//    cout << name;
-    string key = argv[3];
-    char size = name.length() + 1;
-    char code;
-    vector<char> message(size);
-
-    if (key == "code") {
-        code = 1;
-    } else if (key == "decode") {
-        code = 0;
-    } else {
-        wrong_usage();
-        return 0;
-    }
-    for (int i = 0; i < size - 1; i++) {
-        message[i] = static_cast<char>(name[i]);
-//        message[i] = 'a' + i;
-
+    name += '\n';
+    if (name.size() > 80) {
+        cout << "Second arg should be 80 symbols or shorter\n";
+        exit(EXIT_FAILURE);
     }
 
-    message[size - 1] = '\0';
-    int s = socket(AF_INET, SOCK_STREAM, 0);
-    is_failure(s, "socket");
-    struct sockaddr_in server{};
-    server.sin_family = AF_INET;
-    server.sin_port = htons(SERVER_PORT);
-    is_failure(inet_pton(AF_INET, argv[1], &server.sin_addr), "inet_pton");
-    is_failure(connect(s, (sockaddr *) (&server), sizeof(server)), "connect");
-    print_vec(message, size - 1);
-    size*=2;
-    if (code) {
-        size++;
+    struct sockaddr_in serv_addr;
+    memset(&serv_addr, 0, sizeof serv_addr);
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_port = htons(SERVER_PORT);
+
+    check_error(inet_pton(AF_INET, argv[1], &serv_addr.sin_addr), "inet_pton");
+    int sockfd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
+    if (connect(sockfd, (struct sockaddr*)  &serv_addr, sizeof serv_addr) < 0 &&
+        errno != EINPROGRESS) {
+        check_error(-1,"Cannot connect to socket");
     }
-    fun_send(&size, 1, s, "client");
-    size /= 2;
-    fun_send(&message[0], size, s, "client");
-    fun_recv(&message[0], size, s, "client");
-    print_vec(message, size - 1);
-    is_failure(close(s), "close");
+    int epollCreate = epoll_create(1);
+    struct epoll_event event, events[MAX_EPOLL_EVENTS];
+    event.events = EPOLLOUT;
+    event.data.fd = sockfd;
+    check_error(epoll_ctl(epollCreate, EPOLL_CTL_ADD, sockfd, &event), "epoll_ctl");
+    int epollWait = epoll_wait(epollCreate, events, MAX_EPOLL_EVENTS, -1);
+    check_error(epollWait, "Waiting for output failed");
+    int i = 0;
+    for (; i < epollWait; i++) {
+        if (events[i].data.fd == sockfd && (events[i].events & EPOLLOUT)) {
+            if(fun_send_client(sockfd, const_cast<char *>(name.data()),name.length(),"client")) {
+                check_error(-1,"Sending failed");
+            }
+            break;
+        }
+    }
+    if (i == epollWait) {
+        check_error(-1,"Cann't send data to server");
+    }
+    event.events = EPOLLIN;
+    check_error(epoll_ctl(epollCreate, EPOLL_CTL_MOD, sockfd, &event), "epoll");
+    epollWait = epoll_wait(epollCreate, events, MAX_EPOLL_EVENTS, -1);
+    check_error(epollWait,"Waiting for input failed");
+    for (; i < epollWait; i++) {
+        if (events[i].data.fd == sockfd && (events[i].events & EPOLLIN)) {
+            char buf[BUF_SIZE + 1];
+            if(fun_recv_client(sockfd, buf, "client")) {
+                check_error(-1,"Receiving failed");
+            }
+            cout << buf << '\n';
+            break;
+        }
+    }
+    if (i == epollWait) {
+        check_error(-1,"Cannot receive data from server");
+    }
+
     return 0;
 }

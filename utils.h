@@ -7,16 +7,24 @@
 
 #include <string>
 #include <sys/epoll.h>
+#include <iostream>
+#include <cstring>
 #include <sys/socket.h>
-#include <netinet/in.h>
 
 
-int const SERVER_PORT = 8089;
-void fun_send(char *what, int amount, int where, std::string message);
-void fun_recv(char *where, int amount, int from, std::string message);
-void fun_connect(int file_descriptor, int epoll_descriptor, epoll_event* ee);
+using std::string;
+using std::cout;
 
-void add_new_client(const int* master, sockaddr_in* client, int* poll_s, socklen_t* size_s);
-void is_failure(int rc, const std::string &problem_name);
+int const SERVER_PORT = 8080;
+const size_t BUF_SIZE = 100;
+const size_t MAX_EPOLL_EVENTS = 16;
+void check_error(int rc, const std::string& additional);
+void check_non_stop(int rc, const std::string& additional);
+void fun_send(int fd, char* what, int size, string message);
+void fun_recv(int fd, char* what, string message);
+
+bool fun_send_client(int fd, char* what, int size, string message);
+bool fun_recv_client(int fd, char* what, string message);
+
 
 #endif //TASK5_UTILS_H
