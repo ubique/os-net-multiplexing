@@ -1,3 +1,7 @@
+//
+// Created by Михаил Терентьев on 2019-05-23.
+//
+
 #include "server.h"
 #include "server_execption.h"
 

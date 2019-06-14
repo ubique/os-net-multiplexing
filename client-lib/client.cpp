@@ -78,7 +78,7 @@ void client::run() {
             }
             if (events[i].data.fd == 0) {
                 getline(std::cin, message);
-                if (message.empty() || !std::cin) {
+                if (message == "exit") {
                     isInterrupted = true;
                     break;
                 }
