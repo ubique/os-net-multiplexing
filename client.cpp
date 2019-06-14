@@ -38,7 +38,7 @@ void setSocketOpt(int socket) {
 }
 
 int openSocket() {
-    int openedSocket = socket(PROTOCOL_FAMILY, SOCK_STREAM, 0);
+    int openedSocket = socket(PROTOCOL_FAMILY, SOCK_STREAM | SOCK_NONBLOCK, 0);
 
     if (openedSocket < 0) {
         printErr("Unable to open socket");
