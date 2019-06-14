@@ -87,26 +87,45 @@ int main(int argc, char **argv) {
                     i = 0;
                 }
 
-                int len = recv(cur, &buff, sizeof(buff), 0);
 
-                if (len == -1) {
+                int len = 0;
+                int new_len = recv(cur, &buff, sizeof(buff), 0);
+                while (new_len > 0) {
+                    len += new_len;
+                    new_len = recv(cur, &buff + len, sizeof(buff), 0);
+                    if (buff[len + new_len - 1] == '\n') {
+                        break;
+                    }
+                }
+                len += new_len;
+                buff[len] += '\0';
+
+                if (new_len == -1) {
                     cerr << "Can't receive a message" << endl;
                     continue;
-                } else if (len == 0){
+                } else if (len == 0) {
                     continue;
                 }
-
                 string message(buff, buff + len);
                 if (message == "exit") {
                     working = false;
                 }
 
                 cout << "Received message " << cur << ": " << buff << endl;
-                if (send(cur, buff, len, 0) == -1) {
-                    cerr << "Send failed" << endl;
-                    if ((epoll_ctl(epollDes, EPOLL_CTL_DEL, cur, NULL) == -1))
-                        cerr << "Can't delete";
+
+                int sent = 0;
+                while(sent < len){
+                    int res;
+                    if (res = send(cur, buff, len, 0) == -1) {
+                        cerr << "Send failed" << endl;
+                        if ((epoll_ctl(epollDes, EPOLL_CTL_DEL, cur, NULL) == -1)) {
+                            cerr << "Can't delete";
+                        }
+                        exit(EXIT_FAILURE);
+                    }
+                    sent += res;
                 }
+
 
             } else {
                 struct sockaddr_in client_addr{};

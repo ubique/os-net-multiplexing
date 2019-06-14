@@ -8,7 +8,7 @@
 #include <stdio.h>
 #include <sys/epoll.h>
 #include <cstdlib>
-
+#include <unistd.h>
 
 using namespace std;
 
@@ -56,11 +56,8 @@ int main(int argc, char **argv) {
     struct epoll_event events[CONNECTION_COUNT];
 
 
-    epoll_event.events = EPOLLIN;
-    epoll_event.data.fd = fileDes;
 
-    epoll_event.events = EPOLLIN;
-    epoll_event.data.fd = 0;
+    epoll_event.events = STDIN_FILENO;
 
 
     char buff[BUFFER_SIZE];
@@ -80,19 +77,48 @@ int main(int argc, char **argv) {
                 cin >> message;
                 if (message == "exit") {
                     working = false;
-                } else if (send(fileDes, message.data(), message.size(), 0) == -1){
-                    cerr << "Sending failed" << endl;
+                } else {
+                    message += "\0";
+
+                    int sent = 0;
+                    while (sent < message.size()){
+                        int new_sent;
+                        if ((new_sent = (send(fileDes, message.data(), message.size(), 0)) == -1)){
+                            cerr << "Can't send" << endl;
+                            exit(EXIT_FAILURE);
+                        }
+                        sent += new_sent;
+                    }
                 }
             } else if (cur == fileDes) {
                 for (int i = 0; i < BUFFER_SIZE; i++){
                     buff[i] = 0;
                 }
-                int len = recv(fileDes, buff, BUFFER_SIZE, 0);
-                if (len == -1){
+
+                int len = 0;
+                int new_len = 1;
+                while(new_len > 0) {
+                    new_len = recv(fileDes, buff + len, BUFFER_SIZE - len, 0);
+                    if (new_len == -1) {
+                        cerr << "Can't read response" << endl;
+                        continue;
+                    }
+                    len += new_len;
+                    if (buff[len - 1] == '\n'){
+                        break;
+                    }
+                }
+                if (new_len == -1) {
                     cerr << "Can't read response" << endl;
                     continue;
                 }
-                cout << buff << endl;
+                if (len == 0){
+                    return 0;
+                }
+                else {
+                    buff[len] = '\0';
+                    cout << buff << endl;
+                }
             }
         }
     }
