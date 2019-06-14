@@ -25,7 +25,7 @@ int main (int argc, char const*argv[]) {
 		exit(0);
 	}
 
-	sock = socket(AF_INET, SOCK_STREAM, 0);
+	sock = socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0);
 	bzero(&server_addr, sizeof(server_addr));
 	server_addr.sin_family = AF_INET;
 	server_addr.sin_addr.s_addr = INADDR_ANY;
@@ -46,32 +46,42 @@ int main (int argc, char const*argv[]) {
 	int multiplexer	= create();
 
 	int buff[32];
+	int flags[32];
 	int new_sock;
 	int client_sock;
 	int read_len;
 	int write_len;
 	char *dataBuff = (char*) malloc(MAX_BUFF_SIZE);
-	add(multiplexer, sock);
+	add(multiplexer, sock, 0);
 	while (1) {
-		int numb_mpx = wait(buff, multiplexer);
+		int numb_mpx = wait(buff, multiplexer, flags);
 		for (int i = 0; i < numb_mpx; ++i) {
 			new_sock = buff[i];
 			if (sock == new_sock) {
 				if ((client_sock = accept(sock, (struct sockaddr*) NULL, NULL)) < 0) {
-						fprintf(stderr, "accept error\n");
-					}
-				add(multiplexer, client_sock);
+					fprintf(stderr, "accept error\n");
+				}
+				printf("Client connected\n");
+				add(multiplexer, client_sock, 0);
 			} else {
 				if ((read_len = read(new_sock, dataBuff, MAX_BUFF_SIZE)) < 0) {
+					fprintf(stderr, "read error: %s\n", strerror(errno));
 					continue;
 				}
 				dataBuff[read_len] = '\0';
 				if (read_len == 0) {
-					printf("Client disconnected.\n");	
+					printf("Client disconnected\n");
+					del(multiplexer, new_sock);
 				} else {
-					printf("Client tells: %s", dataBuff);
-					if ((write_len = write(new_sock, dataBuff, read_len)) < 0) {
-						fprintf(stderr, "write error\n");
+					int sent = 0;
+					while (1){
+						if ((write_len = write(new_sock, dataBuff, read_len)) < 0) {
+							fprintf(stderr, "write error: %s\n", strerror(errno));
+						}
+						sent += write_len;
+						if (sent >= read_len) {
+							break;
+						}
 					}
 				}
 			}
