@@ -22,11 +22,10 @@ public:
 
     void bind(sockaddr_in& address);
     void listen();
+    void unblock();
     void connect(sockaddr_in& address);
     socket_wrapper accept();
-    int read(char* buffer, int size);
     std::string readMessage();
-    void write(const std::string& message);
     void writeMessage(const std::string& message);
 
     int get_fd();
@@ -36,6 +35,7 @@ private:
 
 private:
     int fd;
+    int flags = 0;
 };
 
 

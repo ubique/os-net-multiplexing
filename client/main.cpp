@@ -17,8 +17,7 @@ int main(int argc, char* argv[]) {
     }
     try {
         client client(argv[1], atoi(argv[2]));
-        std::cout << "This is echo client. Send something to the server and it will return back.\n"
-                     "Type \"exit\" to exit.\n" << std::endl;
+        std::cout << "This is echo client. Send something to the server and it will return back.\n" << std::endl;
         client.start();
         std::cout << "Exited" << std::endl;
     } catch (std::runtime_error& e) {

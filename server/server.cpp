@@ -55,6 +55,7 @@ void server::start() {
             if (tmp_events & EPOLLIN) {
                 if (tmp_fd == server_fd) {
                     socket_wrapper client_socket = sockets[server_fd].accept();
+                    client_socket.unblock();
                     epoll.process(client_socket.get_fd(), EPOLLIN | EPOLLERR | EPOLLHUP, EPOLL_CTL_ADD);
                     sockets[client_socket.get_fd()] = std::move(client_socket);
                     std::cout << "Client connected" << std::endl;

@@ -18,7 +18,6 @@ public:
     ~client() = default;
 
     void start();
-    void stop();
 
 private:
     struct sockaddr_in address;

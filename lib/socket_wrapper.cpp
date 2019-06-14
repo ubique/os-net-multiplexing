@@ -4,6 +4,7 @@
 
 #include "socket_wrapper.h"
 #include "error.h"
+#include <fcntl.h>
 
 
 socket_wrapper::socket_wrapper()
@@ -12,17 +13,26 @@ socket_wrapper::socket_wrapper()
     if (fd == -1) {
         error("Unable to create socket");
     }
+    flags = fcntl(fd, F_GETFL);
+    if (flags == -1) {
+        error("Unable to get socket parameters");
+    }
 }
 
 socket_wrapper::socket_wrapper(int fd_)
     : fd(fd_)
 {
+    flags = fcntl(fd, F_GETFL);
+    if (flags == -1) {
+        error("Unable to get socket parameters");
+    }
 }
 
 socket_wrapper::socket_wrapper(socket_wrapper&& other) noexcept
     : fd(other.fd)
 {
     other.fd = -1;
+    other.flags = 0;
 }
 
 socket_wrapper::~socket_wrapper() {
@@ -32,9 +42,9 @@ socket_wrapper::~socket_wrapper() {
 }
 
 socket_wrapper& socket_wrapper::operator=(socket_wrapper&& other) noexcept {
-    //name = std::move(other.name);
     fd = other.fd;
     other.fd = -1;
+    other.flags = 0;
     return *this;
 }
 
@@ -52,6 +62,15 @@ void socket_wrapper::listen() {
     }
 }
 
+void socket_wrapper::unblock() {
+    if (!(flags & O_NONBLOCK)) {
+        if (::fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) {
+            error("Unable to change socket parameters");
+        }
+        flags |= O_NONBLOCK;
+    }
+}
+
 void socket_wrapper::connect(sockaddr_in& address) {
     int ret = ::connect(fd, reinterpret_cast<sockaddr*>(&address), sizeof(sockaddr));
     if (ret == -1) {
@@ -65,14 +84,6 @@ socket_wrapper socket_wrapper::accept() {
     }
     int new_fd = ::accept(fd, nullptr, nullptr);
     return socket_wrapper(new_fd);
-}
-
-int socket_wrapper::read(char* buffer, int size) {
-    int len = ::read(fd, buffer, size);
-    if (len == -1) {
-        error("Unable to read data from socket");
-    }
-    return len;
 }
 
 std::string socket_wrapper::readMessage() {
@@ -95,13 +106,6 @@ std::string socket_wrapper::readMessage() {
         }
     }
     return result;
-}
-
-void socket_wrapper::write(const std::string& message) {
-    int ret = ::write(fd, message.data(), message.size());
-    if (ret == -1) {
-        error("Unable to write data to socket");
-    }
 }
 
 void socket_wrapper::writeMessage(const std::string& message) {
