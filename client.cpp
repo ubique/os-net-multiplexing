@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <zconf.h>
 #include <sys/epoll.h>
+#include <fcntl.h>
 
 using namespace std;
 
@@ -43,7 +44,16 @@ int main(int argc, char **argv) {
     }
     server.sin_port = htons(port);
     inet_pton(AF_INET, argv[1], &server.sin_addr);
-    check_error(connect(file_descriptor, (sockaddr *) (&server), sizeof(server)), "connect");
+
+
+    int flags = fcntl(file_descriptor, F_GETFL, 0);
+    check_error(flags, "fcntl");
+    check_error(fcntl(file_descriptor, F_SETFL, flags | O_NONBLOCK), "fcntl");
+
+    if (connect(file_descriptor, (sockaddr *) (&server), sizeof(server)) == -1 && errno != EINPROGRESS) {
+        perror("connect");
+        return EXIT_FAILURE;
+    }
 
     struct epoll_event epoll_event{};
     struct epoll_event events[MAX_CONNECTS];
@@ -102,4 +112,4 @@ int main(int argc, char **argv) {
             }
         }
     }
-}
+} 
