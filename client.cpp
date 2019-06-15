@@ -69,6 +69,9 @@ int main(int argc, char **argv) {
     struct epoll_event events[CONNECTION_COUNT];
 
 
+    epoll_event.events = EPOLLIN;
+    epoll_event.data.fd = fileDes;
+    check_error(epoll_ctl(epollDes, EPOLL_CTL_ADD, file_descriptor, &epoll_event), "epoll_ctl");
 
     epoll_event.data.fd = STDIN_FILENO;
     check_error(epoll_ctl(epollDes, EPOLL_CTL_ADD, STDIN_FILENO, &epoll_event), "epoll_ctl");
