@@ -1,84 +1,64 @@
 #include "utils.h"
 
-int clients[NUMBER_OF_CLIENTS];
-
-void workWithServer(char * buffer, char * message) {
-    int curSock, maxSocketDescriptor, pool = 0;
-    fd_set clientsSet{};
-//    srand(time(0)); // to select malfunctioning client
-    while (pool != NUMBER_OF_CLIENTS) {
-        __FD_ZERO(&clientsSet);
-        maxSocketDescriptor = clients[0];
-        for (auto &client : clients) {
-            curSock = client;
-            if (curSock > 0)
-                __FD_SET(curSock, &clientsSet);
-            if (curSock > maxSocketDescriptor)
-                maxSocketDescriptor = curSock;
-        }
-        processActivity(select(maxSocketDescriptor + 1, &clientsSet, nullptr, nullptr, nullptr));
-        for (int &client : clients) {
-            curSock = client;
-            if (FD_ISSET(curSock, &clientsSet)) {
-                int res;
-                if ((res = sockRead(curSock, buffer)) < 0)
-                    printError("Reading failed\n");
-                if (rand() % NUMBER_OF_CLIENTS != 0)
-                    buffer = proccessPalindrome(buffer, res);
-                buffer[res] = '\n';
-                sprintf(message, "Client %d trying to reply\n", curSock);
-                writeStr(message);
-                sendAll(curSock, buffer);
-                sprintf(message, "Client %d replied\n", curSock);
-                writeStr(message);
-                closeSocket(curSock);
-                client = 0;
-                ++pool;
-            }
-        }
-    }
-}
-
 int main(int argc, char *argv[]) {
     if (argc != 3)
         printError("Expected: address and port\n");
 
     char *address = argv[1];
-    char *buffer = new char[bufferLen];
-    char *message = new char[bufferLen];
+    char buffer[bufferLen];
 
     auto port = strtol(argv[2], nullptr, 10);
     if (errno == ERANGE || port > UINT16_MAX || port <= 0)
         printError("Number of port should be uint16_t");
 
+    int epoll;
+    struct epoll_event events[NUMBER_OF_EVENTS], event;
+    if ((epoll = epoll_create1(0)) == -1)
+        printSysError("epoll_create1");
+
     struct sockaddr_in addr;
     addr.sin_family = AF_INET;
-    if (inet_pton(AF_INET, address, &(addr.sin_addr.s_addr)) <= 0)
-        printSysError("inet_pton");
+    if (inet_aton(address, &addr.sin_addr) == 0)
+        printSysError("inet_aton");
+
     addr.sin_port = htons(static_cast<uint16_t>(port));
 
-    for (int & client : clients) {
-        int sock;
-        if ((sock = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0)) < 0)
-            printSysError("socket");
+    int sock;
+    if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+        printSysError("socket");
 
-        connect(sock, reinterpret_cast<const sockaddr *>(&addr), sizeof(addr));
+    if (connect(sock, reinterpret_cast<sockaddr *>(&addr), sizeof(sockaddr_in)) == -1)
+        printSysError("connect");
 
-        struct timeval timeout;
-        timeout.tv_sec = 60;
-        timeout.tv_usec = 0;
+    printf("Client %d connected.\n", sock);
 
-        if (setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, (char *) &timeout, sizeof(timeout)) < 0)
-            printSysError("setsockopt");
+    epollAdding(epoll, sock, &event);
+    epollAdding(epoll, 0, &event);
 
-        sprintf(message, "Client %d connected.\n", sock);
-        writeStr(message);
-        client = sock;
+    char size;
+    for (;;) {
+        if (feof(stdin) != 0)
+            return 0;
+
+        int numfd;
+        if ((numfd = epoll_wait(epoll, events, NUMBER_OF_EVENTS, -1)) == -1)
+            printSysError("epoll_wait");
+
+        for (int i = 0; i < numfd; ++i) {
+            if (events[i].data.fd == sock) {
+                recvAll(sock, buffer, 1, false);
+                size = buffer[0];
+                recvAll(sock, buffer, size, false);
+                printf("Res: %s\n", buffer);
+            } else {
+                scanf("%255s", buffer);
+                size = strlen(buffer);
+                ++size;
+                sendAll(sock, &size, 1, false);
+                sendAll(sock, buffer, size, false);
+            }
+        }
     }
-
-    workWithServer(buffer, message);
-
-    delete []buffer;
-    delete []message;
+    closeSocket(sock);
     return 0;
 }
