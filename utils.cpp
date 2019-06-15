@@ -35,7 +35,7 @@ void doRecv(char *where, int amount, int from) {
     int counter = 0;
     while (counter < amount) {
         int received = read(from, where + counter, amount - counter);
-        if (received == 1 && errno != EAGAIN)
+        if (received == -1 && errno != EAGAIN)
             check_error(received, "recv");
         counter += std::max(0, received);
     }
