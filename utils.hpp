@@ -10,7 +10,7 @@
 void check_error(int rc, const std::string& additional);
 void doSend(char * what, int amount, int where);
 void doRecv(char * where, int amount, int from);
-int const MAX_MESSAGE_LEN = 100;
+int const MAX_MESSAGE_LEN = 50;
 int const SERVER_PORT = 8880;
 
 #endif //FIND_UTILS_HPP
