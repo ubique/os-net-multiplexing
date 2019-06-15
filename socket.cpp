@@ -39,9 +39,9 @@ public:
         other.flags = 0;
     }
 
-    explicit Socket(int fd) : fd() {}
+    explicit Socket(int fd) : fd(fd) {}
 
-    Socket &Socket::operator=(Socket &&other) noexcept {
+    Socket &operator=(Socket &&other) noexcept {
         fd = other.fd;
         other.fd = -1;
         flags = other.flags;
@@ -95,7 +95,7 @@ public:
     Socket accept() {
         sockaddr_in addr{};
         socklen_t  addr_size;
-        int connection(::accept(fd, reinterpret_cast<sockaddr *>(&addr), &addr_size));
+        int connection(::accept(fd, nullptr, nullptr));
         if (connection == -1) {
             throw socket_exception("Can't accept connection");
         }
