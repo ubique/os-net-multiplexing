@@ -18,13 +18,13 @@ const int EPOLL_RUN_TIMEOUT = -1;
 
 int open_socket() {
     int listener;
-    listener = socket(AF_INET, SOCK_STREAM, 0);
+    listener = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
     if (listener < 0) {
         std::cerr << "Can't create a socket: " << strerror(errno) << std::endl;
         exit(EXIT_FAILURE);
     }
     int opt = 1;
-    if (setsockopt(listener, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) == -1) {
+    if (setsockopt(listener, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt)) == -1) {
         std::cerr << "Can't set options on socket: " << strerror(errno) << std::endl;
         exit(EXIT_FAILURE);
     }
@@ -141,7 +141,7 @@ int main(int argc, char *argv[]) {
     listening(listener);
     int epoll = create_epoll(EPOLL_SIZE);
     static struct epoll_event event, events[EPOLL_SIZE];
-    event.events = EPOLLIN | EPOLLET;
+    event.events = EPOLLIN;
     event.data.fd = listener;
     add_listener_to_epoll(epoll, listener, event);
     std::cout << "Server is ready" << std::endl;

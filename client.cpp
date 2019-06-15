@@ -17,7 +17,7 @@ bool shutdown_client = false;
 
 int open_socket() {
     int sock;
-    sock = socket(AF_INET, SOCK_STREAM, 0);
+    sock = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
     if (sock < 0) {
         std::cerr << "Can't create a socket: " << strerror(errno) << std::endl;
         exit(EXIT_FAILURE);
@@ -35,7 +35,7 @@ void establish_connection(int sock, int port) {
     addr.sin_family = AF_INET;
     addr.sin_port = htons(port);
     addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-    if (connect(sock, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+    if (connect(sock, (struct sockaddr *) &addr, sizeof(addr)) < 0 && errno != EINPROGRESS) {
         std::cerr << "Connect failed: " << strerror(errno) << std::endl;
         exit(EXIT_FAILURE);
     }
@@ -63,16 +63,9 @@ std::string get_request() {
     return request;
 }
 
-void add_server_to_epoll(int epoll, int sock, epoll_event &event) {
+void add_to_epoll(int epoll, int sock, epoll_event &event) {
     if (epoll_ctl(epoll, EPOLL_CTL_ADD, sock, &event) < 0) {
         std::cerr << "Can't add client to epoll: " << strerror(errno) << std::endl;
-        exit(EXIT_FAILURE);
-    }
-}
-
-void send_message(int to, const char *data, unsigned long size) {
-    if (write(to, data, size) < 0) {
-        std::cerr << "Can't send message: " << strerror(errno) << std::endl;
         exit(EXIT_FAILURE);
     }
 }
@@ -94,7 +87,7 @@ void close_connection(int client) {
     }
 }
 
-void connect_to_server(int sock) {
+void receive_welcome_message(int sock) {
     ssize_t len;
     char message[BUFFER_SIZE];
     if ((len = recv(sock, message, BUFFER_SIZE, 0)) < 0) {
@@ -111,7 +104,14 @@ void connect_to_server(int sock) {
     }
 }
 
-int main(int argc, char **argv) {
+void send_message(int to, const char *data, unsigned long size) {
+    if (write(to, data, size) < 0) {
+        std::cerr << "Can't send message: " << strerror(errno) << std::endl;
+        exit(EXIT_FAILURE);
+    }
+}
+
+int main(int argc, char *argv[]) {
     int port;
     if (argc == 2) {
         port = atoi(argv[1]);
@@ -127,14 +127,28 @@ int main(int argc, char **argv) {
 
     int epoll = create_epoll(EPOLL_SIZE);
     static struct epoll_event event, events[EPOLL_SIZE];
-    event.events = EPOLLIN | EPOLLET;
+
+    event.events = EPOLLIN;
     event.data.fd = sock;
+    add_to_epoll(epoll, sock, event);
 
-    add_server_to_epoll(epoll, sock, event);
     event.data.fd = pipe_fd[0];
-    add_server_to_epoll(epoll, pipe_fd[0], event);
+    add_to_epoll(epoll, pipe_fd[0], event);
 
-    connect_to_server(sock);
+    int ready = epoll_wait(epoll, events, EPOLL_SIZE, -1);
+    if (ready < 0) {
+        std::cerr << "Epoll waiting failed: "  << strerror(errno) << std::endl;
+        exit(EXIT_FAILURE);
+    }
+    int index = 0;
+    std::string init = "client";
+    for (; index < ready; ++index) {
+        if (events[index].data.fd == sock && (events[index].events & EPOLLOUT)) {
+            send_message(sock, init.data(), init.size());
+            break;
+        }
+    }
+    receive_welcome_message(sock);
 
     int pid = fork();
     if (pid < 0) {
