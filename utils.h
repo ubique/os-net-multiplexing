@@ -19,11 +19,11 @@
 #include <cstdint>
 #include <iostream>
 #include <vector>
+#include <fcntl.h>
+#include <sys/epoll.h>
 
-char const *mess = "some men interpret nine memos\n";       // string to invert
-char const *pali = "somem enin terpretni nem emos\n\n";     // inverted string
-const int bufferLen = 1024;
-const int NUMBER_OF_CLIENTS = 5;
+const int bufferLen = 256;
+const int NUMBER_OF_EVENTS = 64;
 
 char *proccessPalindrome(char *buffer, int res) {
     for (int i = 0; i < res / 2; ++i)
@@ -70,14 +70,17 @@ void writeStr(char const *s) {
     }
 }
 
-void sendAll(int socket, const char *buffer) {
-    size_t length = strlen(buffer);
+bool sendAll(int socket, char *buffer, ssize_t size, bool server) {
     ssize_t m = 0, bytesSent = 0;
-    while ((length - bytesSent > 0) && ((m = send(socket, buffer + bytesSent, length - bytesSent, 0)) > 0)) {
-        if (static_cast<int>(m) < 0)
-            printError("Error was occurred while reading");
+    while (bytesSent < size) {
+        if ((m = send(socket, buffer + bytesSent, size - bytesSent, 0)) == -1) {
+            if (server)
+                return true;
+            printSysError("send");
+        }
         bytesSent += m;
     }
+    return false;
 }
 
 void closeSocket(int socket) {
@@ -93,6 +96,37 @@ int sockRead(int socket, char *buffer) {
             break;
     }
     return static_cast<int>(n);
+}
+
+
+void epollAdding(int epoll, int socket, epoll_event *event) {
+    event->events = EPOLLIN;
+    event->data.fd = socket;
+    if (epoll_ctl(epoll, EPOLL_CTL_ADD, socket, event) == -1) {
+        closeSocket(socket);
+        printSysError("epoll_ctl");
+    }
+}
+
+bool recvAll(int socket, char *buffer, ssize_t size, bool server) {
+    ssize_t count = 0;
+    while (count < size) {
+        ssize_t read = recv(socket, buffer, size, 0);
+        if (read <= 0) {
+            if (server)
+                return true;
+            printSysError("recv");
+        }
+        count += read;
+    }
+    return false;
+}
+
+void epollEnding(int epoll, int socket, const char *error) {
+    perror(error);
+    if (epoll_ctl(epoll, EPOLL_CTL_DEL, socket, nullptr) == -1)
+        perror("epoll_ctl");
+    closeSocket(socket);
 }
 
 #endif //OS_NET_MULTIPLEXING_UTILS_H
