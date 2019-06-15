@@ -9,11 +9,21 @@
 #include <sys/epoll.h>
 #include <cstdlib>
 #include <unistd.h>
+#include <fcntl.h>
+
 
 using namespace std;
 
 int const CONNECTION_COUNT = 32;
 int const BUFFER_SIZE = 8192;
+
+
+void check_error(int value, const char *message) {
+    if (value == -1) {
+        perror(message);
+        exit(EXIT_FAILURE);
+    }
+}
 
 int main(int argc, char **argv) {
     if (argc != 3) {
@@ -46,18 +56,22 @@ int main(int argc, char **argv) {
         exit(EXIT_FAILURE);
     }
 
-    if (connect(fileDes, (sockaddr * )(&server), sizeof(server)) == -1) {
-        cerr << ("Connection failed") << endl;;
-        exit(EXIT_FAILURE);
-    }
+    int flags = fcntl(fileDes, F_GETFL, 0);
+    check_error(flags, "fcntl");
+    check_error(fcntl(fileDes, F_SETFL, flags | O_NONBLOCK), "fcntl");
 
+    if (connect(fileDes, (sockaddr *) (&server), sizeof(server)) == -1 && errno != EINPROGRESS) {
+        perror("connect");
+        return EXIT_FAILURE;
+    }
 
     struct epoll_event epoll_event{};
     struct epoll_event events[CONNECTION_COUNT];
 
 
 
-    epoll_event.events = STDIN_FILENO;
+    epoll_event.data.fd = STDIN_FILENO;
+    check_error(epoll_ctl(epollDes, EPOLL_CTL_ADD, STDIN_FILENO, &epoll_event), "epoll_ctl");
 
 
     char buff[BUFFER_SIZE];
