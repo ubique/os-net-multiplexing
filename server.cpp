@@ -4,102 +4,83 @@ int main(int argc, char *argv[]) {
     if (argc != 3)
         printError("Excepted address and port");
 
-    char *message = new char[bufferLen];
     char buffer[bufferLen];
-    int opt = 1, mainSock, addrlen, clientSock, clients[NUMBER_OF_CLIENTS] = {0}, curSock, maxSocketDescriptor;
+    int mainSock;
 
+    int epoll;
+    if ((epoll = epoll_create1(0)) == -1)
+        printSysError("epoll_create1");
+
+    struct epoll_event events[NUMBER_OF_EVENTS], event;
     struct sockaddr_in address;
     char *addr = argv[1];
     address.sin_family = AF_INET;
-    if (inet_pton(AF_INET, addr, &(address.sin_addr.s_addr)) <= 0)
-        printSysError("inet_pton");
+    if (inet_aton(addr, &address.sin_addr) <= 0)
+        printSysError("inet_aton");
     address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
 
     auto port = strtol(argv[2], nullptr, 10);
-    address.sin_port = htons(static_cast<uint16_t>(port));
-    fd_set clientsSet;
     if (errno == ERANGE || port > UINT16_MAX || port <= 0)
         printError("Number of port should be uint16_t");
+    address.sin_port = htons(static_cast<uint16_t>(port));
 
-    if ((mainSock = socket(AF_INET, SOCK_STREAM, 0)) <= 0)
+    if ((mainSock = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0)) <= 0)
         printSysError("socket");
 
-    if (setsockopt(mainSock, SOL_SOCKET, SO_REUSEADDR, (char *) &opt, sizeof(opt)) < 0)
-        printSysError("setsockopt");
+    if (bind(mainSock, (struct sockaddr *) &address, sizeof(sockaddr_in)) < 0)
+        printSysError("bind");
 
-    if (bind(mainSock, (struct sockaddr *) &address, sizeof(address)) < 0) {
-        sprintf(message, "Bind error %d", errno);
-        printError(message);
-    }
-
-    if (listen(mainSock, NUMBER_OF_CLIENTS) < 0)
+    int backlog = 10;
+    if (listen(mainSock, backlog) < 0)
         printSysError("listen");
 
-    addrlen = sizeof(address);
-    int incorrectAnswerHolder = -1;
+    epollAdding(epoll, mainSock, &event);
+
+    int numfd, resfd;
+    char size;
     while (true) {
-        FD_ZERO(&clientsSet);
-        FD_SET(mainSock, &clientsSet);
-        maxSocketDescriptor = mainSock;
+        if ((numfd = epoll_wait(epoll, events, NUMBER_OF_EVENTS, -1)) == -1)
+            printSysError("epoll_wait");
 
-        for (int &client : clients) {
-            curSock = client;
-            if (curSock > 0)
-                FD_SET(curSock, &clientsSet);
-            if (curSock > maxSocketDescriptor)
-                maxSocketDescriptor = curSock;
-        }
+        for (int i = 0; i < numfd; ++i) {
+            if (events[i].data.fd == mainSock) {
+                struct sockaddr_in client;
+                socklen_t socklen = sizeof(client);
+                if ((resfd = accept(mainSock, reinterpret_cast<sockaddr *>(&client), &socklen)) == -1)
+                    printSysError("accept");
 
-        processActivity(select(maxSocketDescriptor + 1, &clientsSet, nullptr, nullptr, nullptr));
-        if (FD_ISSET(mainSock, &clientsSet)) {
-            if ((clientSock = accept(mainSock, (struct sockaddr *) &address, (socklen_t *) &addrlen)) < 0)
-                printSysError("accept");
-            sprintf(message, "Client %d connected (address: %s)\n", clientSock, inet_ntoa(address.sin_addr));
-            writeStr(message);
-            sendAll(clientSock, mess);
-            for (int &client : clients)
-                if (client == 0) {
-                    client = clientSock;
-                    break;
+                auto name = inet_ntoa(client.sin_addr);
+                printf("Client %d: connected.(%s)\n", resfd, name);
+                epollAdding(epoll, resfd, &event);
+            } else {
+                resfd = events[i].data.fd;
+
+                if (recvAll(resfd, buffer, 1, true)) {
+                    epollEnding(epoll, resfd, "recv");
+                    continue;
                 }
-        }
 
-        for (int &client : clients) {
-            curSock = client;
-            if (FD_ISSET(curSock, &clientsSet)) {
-                int result = sockRead(curSock, buffer);
-                if (getpeername(curSock, (struct sockaddr *) &address, (socklen_t *) &addrlen) == -1)
-                    printSysError("getpeername");
-                closeSocket(curSock);
-                client = 0;
-//                std::cout << result << '\n';
-                buffer[result - 1] = '\n';
-                if (result >= 0)
-                    if (strcmp(buffer, pali) == 0)
-                        sprintf(message, "%d: Palindrome is built correctly\n", curSock);
+                size = buffer[0];
+                if (recvAll(resfd, buffer, size, true)) {
+                    epollEnding(epoll, resfd, "recv");
+                    continue;
+                }
 
-                    else {
-                        sprintf(message, "%d: Palindrome is built wrong\n", curSock);
-                        incorrectAnswerHolder = curSock;
-                    }
+                printf("%s\n", buffer);
+                if (sendAll(resfd, &size, 1, true)) {
+                    epollEnding(epoll, resfd, "send");
+                    continue;
+                }
 
-                else
-                    sprintf(message, "%d: no action :(\n", curSock);
+                if (sendAll(resfd, buffer, size, true)) {
+                    epollEnding(epoll, resfd, "send");
+                    continue;
+                }
 
-                writeStr(message);
+                printf("%d: Processed.\n", resfd);
             }
         }
-
-        if (incorrectAnswerHolder != -1) {
-            for (int &client : clients)
-                close(client);
-            closeSocket(mainSock);
-            sprintf(message, "Client %d couldn't build palindrome\n", incorrectAnswerHolder);
-            writeStr(message);
-            break;
-        }
     }
-
-    delete[]message;
+    closeSocket(mainSock);
     return 0;
 }
