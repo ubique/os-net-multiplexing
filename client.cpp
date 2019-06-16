@@ -15,7 +15,7 @@
 
 
 static const int MAX_EVENTS = 4;
-static const int BUFFER_SIZE = 4096;
+static const int MAX_BUFFER_SIZE = 4096;
 
 int connect(int port) {
     int openedSocket = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
@@ -34,8 +34,8 @@ int connect(int port) {
     address.sin_family = AF_INET;
     address.sin_port = htons(port);
     address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-    status = connect(openedSocket, (struct sockaddr*) &address, sizeof(address) && errno != EINPROGRESS);
-    if (status == -1) {
+    status = connect(openedSocket, (struct sockaddr*) &address, sizeof(address));
+    if (status == -1 && errno != EINPROGRESS) {
         std::cerr << "Error while connecting to socket " << strerror(errno) << std::endl;
         exit(EXIT_FAILURE);
     }
@@ -68,7 +68,6 @@ int main(int argc, char **argv) {
     epollCtl(epollEvent, EPOLLIN, connectedSocket, epollDescriptor);
     epollCtl(epollEvent, EPOLLIN, 0, epollDescriptor);
     bool running = true;
-    const char *requestMessage;
     while (running) {
         int descriptorsNumber = epoll_wait(epollDescriptor, changingEvents, MAX_EVENTS, -1);
         if (descriptorsNumber == -1) {
@@ -77,24 +76,16 @@ int main(int argc, char **argv) {
         }
         for (int i = 0; i < descriptorsNumber; i++) {
             if (changingEvents[i].data.fd == connectedSocket) { //from server
-                char replyBuffer[BUFFER_SIZE];
-                std::cout << "Reply:" << std::endl;
-                ssize_t receivedData = 0;
-                while (receivedData < requestMessageSize) {
-                    ssize_t curReceived = read(connectedSocket, replyBuffer, BUFFER_SIZE);
-                    if (curReceived < 0) {
-                        std::cerr << "Error while reading receiving message from socket" << strerror(errno) << std::endl;
-                        closeSocket(connectedSocket);
-                        exit(EXIT_FAILURE);
-                    } else if (curReceived == 0) {
-                        break;
-                    } else {
-                        for (int i = 0; i < curReceived; ++i) {
-                            std::cout << replyBuffer[i];
-                        }
-                        receivedData += curReceived;
-                        std::cout << std::endl;
-                    }
+                char buffer[MAX_BUFFER_SIZE];
+                int receivedLength = recv(connectedSocket, buffer, MAX_BUFFER_SIZE, 0);
+                if (receivedLength == -1) {
+                    std::cerr << "Response wasn't received: " << std::endl;
+                    exit(EXIT_FAILURE);
+                } else if (receivedLength == 0) {
+                    std::cout << "Lost connection to server" << std::endl;
+                    running = false;
+                } else {
+                    std::cout << "Reply from server: " << buffer << std::endl;
                 }
             } else if (changingEvents[i].data.fd == 0) { //from standard input
                 std::string line;
@@ -103,23 +94,9 @@ int main(int argc, char **argv) {
                     close(connectedSocket);
                     exit(EXIT_SUCCESS);
                 } else {
-                    requestMessage = line.c_str();
-                    char replyBuffer[BUFFER_SIZE];
-                    ssize_t dataSent = 0;
-                    size_t requestMessageSize = strlen(requestMessage);
-                    ssize_t leftDataToSend = requestMessageSize;
-                    while (dataSent < requestMessageSize) {
-                        ssize_t curSent = send(connectedSocket, requestMessage + dataSent, leftDataToSend, 0);
-                        if (curSent < 0) {
-                            std::cerr << "Error while sending message" << strerror(errno) << std::endl;
-                            closeSocket(connectedSocket);
-                            exit(EXIT_FAILURE);
-                        } else if (curSent == 0) {
-                            break;
-                        } else {
-                            dataSent += curSent;
-                            leftDataToSend -= curSent;
-                        }
+                    if (send(connectedSocket, line.data(), line.size(), 0) == -1) {
+                        std::cerr << "Error while sending request: " << std::endl;
+                        exit(EXIT_FAILURE);
                     }
                 }
             }

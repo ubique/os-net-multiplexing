@@ -1,4 +1,4 @@
-//
+    //
 // Created by SP4RK on 18/05/2019.
 //
 #include <iostream>
@@ -13,7 +13,6 @@
 #include <sys/epoll.h>
 
 static const int MAX_EVENTS = 4;
-static const int BUFFER_SIZE = 1024;
 static const int BACKLOG = 5;
 
 int bind(int port) {
@@ -110,26 +109,16 @@ int main(int argc, char** argv) {
                     running = false;
                 }
             } else {
-                char buffer[BUFFER_SIZE];
-                while (ssize_t dataReceived = recv(connectionSocket, buffer, BUFFER_SIZE, 0)) {
-                    if (dataReceived < 0) {
-                        std::cerr << "Error while receiving message" << strerror(errno) << std::endl;
-                        closeSocket(connectionSocket);
-                        exit(EXIT_FAILURE);
-                    } else if (dataReceived == 0) {
-                        break;
-                    } else {
-                        ssize_t dataSent = 0;
-                        while (dataSent < dataReceived) {
-                            ssize_t curSent = send(connectionSocket, buffer + dataSent, dataReceived - dataSent, 0);
-                            if (curSent < 0) {
-                                std::cerr << "Error while sending message" << strerror(errno) << std::endl;
-                                closeSocket(connectionSocket);
-                                exit(EXIT_FAILURE);
-                            } else {
-                                dataSent += curSent;
-                            }
-                        }
+                char buffer[4096];
+                int receivedLength = read(descriptor, buffer, 4096);
+                if (receivedLength == -1) {
+                    std::cerr << "Error while reading from descriptor: " << strerror(errno) << std::endl;
+                    disconnect(epollDescriptor, descriptor);
+                } else {
+                    std::cout << "Client " + std::to_string(descriptor) + ": " << buffer << std::endl;
+                    if (send(descriptor, buffer, receivedLength, 0) == -1) {
+                        std::cerr << "Error while sending response: " << strerror(errno) << std::endl;
+                        disconnect(epollDescriptor, descriptor);
                     }
                 }
             }
