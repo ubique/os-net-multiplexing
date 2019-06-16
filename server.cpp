@@ -13,6 +13,7 @@
 #include <sys/epoll.h>
 
 static const int MAX_EVENTS = 4;
+static const int BUFFER_SIZE = 1024;
 static const int BACKLOG = 5;
 
 int bind(int port) {
@@ -23,9 +24,14 @@ int bind(int port) {
     }
     int option = 1;
     int status;
-    status = setsockopt(listenerSocket, SOL_SOCKET, SO_REUSEADDR, &option, sizeof(option));
+    status = setsockopt(listenerSocket, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &option, sizeof(option));
     if (status == -1) {
         std::cerr << "Error while setting option to socket " << strerror(errno) << std::endl;
+        exit(EXIT_FAILURE);
+    }
+    status = fcntl(listenerSocket, F_SETFL, fcntl(listenerSocket, F_GETFD, 0) | O_NONBLOCK);
+    if (status == -1) {
+        std::cerr << "Error while setting socket to non blocking mode: " << strerror(errno) << std::endl;
         exit(EXIT_FAILURE);
     }
     sockaddr_in address{};
@@ -104,16 +110,26 @@ int main(int argc, char** argv) {
                     running = false;
                 }
             } else {
-                char buffer[4096];
-                int receivedLength = read(descriptor, buffer, 4096);
-                if (receivedLength == -1) {
-                    std::cerr << "Error while reading from descriptor: " << strerror(errno) << std::endl;
-                    disconnect(epollDescriptor, descriptor);
-                } else {
-                    std::cout << "Client " + std::to_string(descriptor) + ": " << buffer << std::endl;
-                    if (send(descriptor, buffer, receivedLength, 0) == -1) {
-                        std::cerr << "Error while sending response: " << strerror(errno) << std::endl;
-                        disconnect(epollDescriptor, descriptor);
+                char buffer[BUFFER_SIZE];
+                while (ssize_t dataReceived = recv(connectionSocket, buffer, BUFFER_SIZE, 0)) {
+                    if (dataReceived < 0) {
+                        std::cerr << "Error while receiving message" << strerror(errno) << std::endl;
+                        closeSocket(connectionSocket);
+                        exit(EXIT_FAILURE);
+                    } else if (dataReceived == 0) {
+                        break;
+                    } else {
+                        ssize_t dataSent = 0;
+                        while (dataSent < dataReceived) {
+                            ssize_t curSent = send(connectionSocket, buffer + dataSent, dataReceived - dataSent, 0);
+                            if (curSent < 0) {
+                                std::cerr << "Error while sending message" << strerror(errno) << std::endl;
+                                closeSocket(connectionSocket);
+                                exit(EXIT_FAILURE);
+                            } else {
+                                dataSent += curSent;
+                            }
+                        }
                     }
                 }
             }
