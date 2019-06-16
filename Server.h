@@ -21,8 +21,10 @@ struct Server {
 private:
     struct FileDescriptor {
         FileDescriptor(int fd) : fd(fd) {
-            if (fd == -1)
+            if (fd == -1) {
+                std::cout << errno << std::endl;
                 throw ServerException("Invalid fd");
+            }
         }
 
         ~FileDescriptor() {

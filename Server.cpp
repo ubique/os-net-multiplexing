@@ -9,7 +9,7 @@
 #include "Server.h"
 
 Server::Server(uint16_t port) : port(port),
-                                listenfd(socket(AF_INET, SOCK_STREAM, 0 /* or IPPROTO_TCP*/ | SOCK_NONBLOCK)),
+                                listenfd(socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0 /* or IPPROTO_TCP*/ )),
                                 epollfd(epoll_create1(0)) {
 
     struct sockaddr_in socket_addr;

@@ -9,7 +9,7 @@
 #include "Client.h"
 
 Client::Client(uint16_t port) : port(port),
-                                sfd(socket(AF_INET, SOCK_STREAM, 0)),
+                                sfd(socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0)),
                                 epollfd(epoll_create1(0)) {
     epoll_ctl_add(epollfd, sfd, EPOLLIN);
     epoll_ctl_add(epollfd, 0, EPOLLIN);
@@ -28,11 +28,9 @@ void Client::run() {
     addr.sin_family = AF_INET;
     addr.sin_port = htons(port);
     addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-    if (connect(sfd, (struct sockaddr*) &addr, sizeof(addr)) == -1) {
+    if (connect(sfd, (struct sockaddr*) &addr, sizeof(addr)) == -1 && errno != EINPROGRESS) {
         throw ClientException("Connection failed");
     }
-    const int flags = fcntl(sfd, F_GETFL, 0);
-    fcntl(sfd, F_SETFL, flags | O_NONBLOCK);
 
     std::string line;
     while (!finished) {
