@@ -15,6 +15,9 @@
 Client::Client(int port) : mPort(port) {
     mSocket = openSocket();
     mEpoll = epoll_create(POLL_SIZE);
+    if (mEpoll < 0) {
+        throw ClientException("Can't create epoll");
+    }
     if (!addToPoll(mEpoll, mSocket, EPOLLIN)) {
         throw ClientException(getMessage("Epoll_ctl failed"));
     }
@@ -30,7 +33,7 @@ void Client::run() {
     addr.sin_family = AF_INET;
     addr.sin_port = htons(mPort);
     addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-    if (connect(mSocket, (struct sockaddr*) &addr, sizeof(addr)) < 0) {
+    if (connect(mSocket, (struct sockaddr*) &addr, sizeof(addr)) < 0 && errno != EINPROGRESS) {
         throw ClientException(getMessage("Connect failed"));
     }
     std::string str;
@@ -69,12 +72,12 @@ void Client::run() {
 
 int Client::openSocket() {
     int sock;
-    sock = socket(AF_INET, SOCK_STREAM, 0);
+    sock = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
     if (sock < 0) {
         throw ClientException(getMessage("Failed to create socket"));
     }
     int opt = 1;
-    if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) == -1) {
+    if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt)) == -1) {
         throw ClientException(getMessage("Failed to set socket options"));
     }
     return sock;

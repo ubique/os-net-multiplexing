@@ -36,7 +36,6 @@ void Server::run() {
     while (true) {
         int ready = epoll_wait(mEpoll, events, POLL_SIZE, -1);
         if (ready == -1) {
-
             throw ServerException(getMessage("Error occurred while waiting"));
         }
         for (size_t i = 0; i < ready; ++i) {
@@ -74,12 +73,12 @@ void Server::run() {
 
 int Server::openSocket() {
     int listener;
-    listener = socket(AF_INET, SOCK_STREAM, 0);
+    listener = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
     if (listener < 0) {
         throw ServerException(getMessage("Failed to create socket"));
     }
     int opt = 1;
-    if (setsockopt(listener, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) == -1) {
+    if (setsockopt(listener, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt)) == -1) {
         throw ServerException(getMessage("Failed to set socket options"));
     }
     return listener;
