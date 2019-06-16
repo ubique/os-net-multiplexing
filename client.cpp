@@ -85,7 +85,7 @@ int main(int argc, char **argv) {
                     std::cout << "Lost connection to server" << std::endl;
                     running = false;
                 } else {
-                    std::cout << "Reply from server: " << buffer << std::endl;
+                    std::cout << "Reply from server: " << std::string(buffer, receivedLength) << std::endl;
                 }
             } else if (changingEvents[i].data.fd == 0) { //from standard input
                 std::string line;
