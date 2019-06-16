@@ -55,14 +55,7 @@ bool EchoServer::readRequest(int socket, int length, string& request) {
 bool EchoServer::sendResponse(int socket, string message) {
 	const char* response = message.c_str();
 	int offset = 0;
-	uint8_t len = (uint8_t) message.length();
-
-	std::vector <uint8_t> length = { len };
-
-	if (send(socket, length.data(), 1, 0) != 1) {
-		std::cerr << "Failed to send length of a message" << endl;
-		return false;
-	}
+	int len = message.length();
 
 	while (offset != message.length()) {
 		int sent = send(socket, response + offset, len, 0);
@@ -117,7 +110,7 @@ void EchoServer::launch() {
 					continue;
 				}
 
-				struct epoll_event newEvent;
+				epoll_event newEvent;
 				newEvent.events = EPOLLIN;
 				newEvent.data.fd = socket;
 
@@ -132,7 +125,6 @@ void EchoServer::launch() {
 				int socket = events[i].data.fd;
 
 				int read_length = recv(socket, request_length.data(), 1, 0);
-
 
 				if (read_length == -1) {
 					std::cerr << "Failed to receive length of the request" << endl;

@@ -4,7 +4,7 @@
 EchoClient::EchoClient(char *port, char *ip) {
 	openSocket();
 	setAddress(port, ip);
-	connectSocket();
+	setupEpoll();
 }
 
 EchoClient::~EchoClient() {
@@ -14,8 +14,42 @@ EchoClient::~EchoClient() {
 	}
 }
 
+void EchoClient::setupEpoll() {
+	epoll = epoll_create(1);
+
+	if (epoll == -1) {
+		perror("Failed to create epoll");
+		exit(EXIT_FAILURE);
+	}
+
+	epoll_event event;
+
+	event.data.fd = 0;
+	event.events = EPOLLIN;
+
+	if (epoll_ctl(epoll, EPOLL_CTL_ADD, 0, &event) == -1) {
+		perror("Failed to add file descriptor to epoll");
+		exit(EXIT_FAILURE);
+	}
+
+	if (fcntl(sock, F_SETFL, fcntl(sock, F_GETFD, 0) | O_NONBLOCK) < 0) {
+		perror("fcntl() error");
+		exit(EXIT_FAILURE);
+	}
+
+	connectSocket();
+
+	event.events = EPOLLIN;
+	event.data.fd = sock;
+
+	if (epoll_ctl(epoll, EPOLL_CTL_ADD, sock, &event) == -1) {
+		perror("Failed to add file descriptor to epoll");
+		exit(EXIT_FAILURE);
+	}
+}
+
 void EchoClient::connectSocket() {
-	if (connect(sock, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
+	if (connect(sock, (struct sockaddr *)&addr, sizeof(sockaddr)) == -1 && errno != EINPROGRESS) {
 		perror("Socket connection failed");
 		exit(EXIT_FAILURE);
 	}
@@ -35,12 +69,7 @@ void EchoClient::setAddress(char *port, char *ip) {
 	inet_pton(AF_INET, ip, &(addr.sin_addr));
 }
 
-void EchoClient::sendRequest(string request) {
-	sendReq(request);
-	readResponse();
-}
-
-void EchoClient::sendReq(string message) {
+void EchoClient::sendRequest(string message) {
 	uint8_t len = (uint8_t) message.length();
 	const char* request = message.c_str();
 	int offset = 0;
@@ -64,21 +93,7 @@ void EchoClient::sendReq(string message) {
 	}
 }
 
-bool EchoClient::readResponse() {
-	std::vector <uint8_t> response_length(1);
-
-	int read_length = recv(sock, response_length.data(), 1, 0);
-
-	if (read_length == -1) {
-		std::cerr << "Failed to receive length of the response" << endl;
-		exit(EXIT_FAILURE);
-	}
-	else if (read_length == 0) {
-		return false;
-	}
-
-	int length = response_length[0];
-
+bool EchoClient::readResponse(int length) {
 	char buffer[length];
 	int received = 0;
 
@@ -105,30 +120,6 @@ bool EchoClient::readResponse() {
 }
 
 void EchoClient::launch() {
-	struct epoll_event event;
-	int epollFd = epoll_create(1);
-
-	if (epollFd == -1) {
-		perror("Failed to create epoll");
-		exit(EXIT_FAILURE);
-	}
-
-	event.data.fd = sock;
-	event.events = EPOLLIN;
-
- 	if (epoll_ctl(epollFd, EPOLL_CTL_ADD, sock, &event) == -1) {
-		perror("Failed to add file descriptor to epoll");
-		exit(EXIT_FAILURE);
-	}
-
-	event.data.fd = 0;
-	event.events = EPOLLIN;
-
-	if (epoll_ctl(epollFd, EPOLL_CTL_ADD, 0, &event) == -1) {
-		perror("Failed to add file descriptor to epoll");
-		exit(EXIT_FAILURE);
-	}
-
 	cout << "Enter 'exit' or 'quit' to stop" << endl;
 	cout << "Enter your requests:" << endl;
 
@@ -136,23 +127,24 @@ void EchoClient::launch() {
 	
 	bool flag = true;
 
+	string request;
+
 	while (flag) {
-		int num = epoll_wait(epollFd, events, 2, -1);
+		int num = epoll_wait(epoll, events, 2, -1);
 		if (num == -1) {
-			perror("epoll_wait error");
+			perror("epoll_wait() error");
 			exit(EXIT_FAILURE);
 		}
 
 		for (int i = 0; i < num; i++) {
 			if (events[i].data.fd == sock) {
-				if (!readResponse()) {
+				if (!readResponse(request.length())) {
 					flag = false;
 					continue;
 				}
 			}
 			else if (events[i].data.fd == 0) {
-				string request;
-				cin >> request;
+				getline(cin, request);
 				if ((strcmp(request.c_str(), "exit") == 0) || (strcmp(request.c_str(), "quit") == 0)) {
 					break;
 				}

@@ -12,10 +12,7 @@
 #include <cstring>
 #include <iostream>
 
-using std::cout;
-using std::cin;
-using std::endl;
-using std::string;
+using namespace std;
 
 class EchoClient {
 	public:
@@ -26,10 +23,11 @@ class EchoClient {
 		void openSocket();
 		void setAddress(char *, char *);
 		void sendRequest(string);
+		void setupEpoll();
 		void launch();
 	private:
 		int sock;
-		struct sockaddr_in addr;
-		void sendReq(string);
-		bool readResponse();
+		int epoll;
+		struct sockaddr_in addr{};
+		bool readResponse(int);
 };
