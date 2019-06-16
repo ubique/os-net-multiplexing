@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
+#include <errno.h>
 
 #define MAX_CONNECTIONS_QUEUE_LENGTH (10000)
 #define EVENT_BUF_SIZE (32)
@@ -18,8 +19,7 @@ void server_add_fd_to_epoll(const int epfd, const int fd) {
     struct epoll_event ev_server;
     ev_server.events = EPOLLIN | EPOLLET;
     ev_server.data.fd = fd;
-    if (epoll_ctl(epfd, EPOLL_CTL_ADD, fd, &ev_server) < 0)
-        fprintf(stderr, "Failed to add file descriptor to epoll.\n");
+    if (epoll_ctl(epfd, EPOLL_CTL_ADD, fd, &ev_server) < 0) FATAL_ERROR("Failed to add file descriptor to epoll.")
 }
 
 void server_handle_new_client(const int epfd, const int sfd) {
@@ -32,12 +32,28 @@ void server_handle_new_client(const int epfd, const int sfd) {
     printf("New client connected.\n");
 }
 
-void server_handle_client(const int cfd) {
-    int readl;
+void server_handle_client(const int cfd, const int epfd) {
     char data[BUF_SIZE];
-    if ((readl = read(cfd, data, BUF_SIZE)) < 0) return;
-    if (readl == 0) printf("Client disconnected.\n");
-    else if ((write(cfd, data, readl)) < 0) fprintf(stderr, "Failed to send message to client.\n");
+    int readl;
+    if ((readl = read(cfd, data, BUF_SIZE)) < 0) {
+        perror("");
+        return;
+    }
+    data[readl] = '\0';
+    if (readl == 0) {
+        printf("Client disconnected.\n");
+        if (epoll_ctl(epfd, EPOLL_CTL_DEL, cfd, NULL) < 0) FATAL_ERROR("Unable delete multiplexer.")
+    } else {
+        int sent = 0;
+        while (1) {
+            int writel;
+            if ((writel = write(cfd, data, readl)) < 0) perror("Failed to send message to client.");
+            sent += writel;
+            if (sent >= readl) {
+                break;
+            }
+        }
+    }
 }
 
 void server_loop(const int sfd) {
@@ -50,15 +66,17 @@ void server_loop(const int sfd) {
     while (1) {
         if ((evc = epoll_wait(epfd, events, EVENT_BUF_SIZE, -1)) < 0) FATAL_ERROR("Epoll wait failed.")
         for (int i = 0; i < evc; ++i) {
-            if (events[i].data.fd != sfd) server_handle_client(events[i].data.fd);
-            else server_handle_new_client(epfd, sfd);
+            if (events[i].data.fd == sfd) server_handle_new_client(epfd, sfd);
+            else server_handle_client(events[i].data.fd, epfd);
         }
     }
+    close(sfd);
+    close(epfd);
 }
 
 int server_init(const char* ip, const char* port) {
     int sfd; // server fd
-    if ((sfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) FATAL_ERROR("Failed to create socket.")
+    if ((sfd = socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0)) < 0) FATAL_ERROR("Failed to create socket.")
 
     struct sockaddr_in server_addr;
     memset(&server_addr, 0, sizeof(server_addr));
