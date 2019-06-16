@@ -16,7 +16,7 @@ Client::Client(int port) : mPort(port) {
     mSocket = openSocket();
     mEpoll = epoll_create(POLL_SIZE);
     if (mEpoll < 0) {
-        throw ClientException("Can't create epoll");
+        throw ClientException(getMessage("Can't create epoll"));
     }
     if (!addToPoll(mEpoll, mSocket, EPOLLIN)) {
         throw ClientException(getMessage("Epoll_ctl failed"));
