@@ -115,7 +115,7 @@ int main(int argc, char** argv) {
                     std::cerr << "Error while reading from descriptor: " << strerror(errno) << std::endl;
                     disconnect(epollDescriptor, descriptor);
                 } else {
-                    std::cout << "Client " + std::to_string(descriptor) + ": " << buffer << std::endl;
+                    std::cout << "Client " + std::to_string(descriptor) + ": " << std::string(buffer, receivedLength) << std::endl;
                     if (send(descriptor, buffer, receivedLength, 0) == -1) {
                         std::cerr << "Error while sending response: " << strerror(errno) << std::endl;
                         disconnect(epollDescriptor, descriptor);
