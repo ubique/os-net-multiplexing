@@ -6,13 +6,15 @@
 
 #include "TCPSocket.h"
 
-net::tcp::TCPSocket::TCPSocket(std::string ipv4, const std::string& port) : ipv4(std::move(ipv4)), port(std::stoi(port)), epoll(epoll_create1(0)) {}
+net::tcp::TCPSocket::TCPSocket(std::string ipv4, const std::string& port) : ipv4(std::move(ipv4)),
+                                                                            port(std::stoi(port)),
+                                                                            epoll(epoll_create(1)) {}
 
 bool net::tcp::TCPSocket::create() {
 
     Utils::message("Creating socket for " + ipv4 + ":" + std::to_string(port));
 
-    if ((fileDescriptor = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
+    if ((fileDescriptor = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0)) == -1) {
         return Utils::fail("Cannot create socket (socket function)");
     }
 
@@ -30,8 +32,7 @@ bool net::tcp::TCPSocket::create() {
             return Utils::error("Wrong ipv4 address " + ipv4);
         default:
             Utils::message("ipv4 is valid. Socket created.");
-    }
-    epollAttach();
+    };
     if (!afterCreate(sockaddrIn)) {
         return false;
     }
@@ -40,24 +41,19 @@ bool net::tcp::TCPSocket::create() {
 }
 
 
-
 int net::tcp::TCPSocket::getFileDescriptor() {
     return fileDescriptor;
 }
 
-void net::tcp::TCPSocket::epollCtl(int events, int descriptor) {
-    event.events = events;
-    event.data.fd = descriptor;
-    int status = epoll_ctl(epoll, EPOLL_CTL_ADD, descriptor, &event);
-    if (status == -1) {
+void net::tcp::TCPSocket::epollCtl(int flags, epoll_evt* e, int fd) {
+    fd = (fd == -1 ? getFileDescriptor() : fd);
+    if (epoll_ctl(epoll, flags, fd, e) < 0) {
         perror("Epoll ctl");
-        close(descriptor);
-        close(epoll);
+        close(fd);
         exit(EXIT_FAILURE);
     }
 }
 
 void net::tcp::TCPSocket::epollAttach() {
-    epollCtl(EPOLLIN, fileDescriptor);
-    epollCtl(EPOLLIN, STDINFD);
+
 }

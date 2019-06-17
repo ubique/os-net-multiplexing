@@ -25,6 +25,18 @@ public:
 
     static void message(const std::string& message);
 
+    static void assertPerror(const std::string& message) {
+        perror(message.data());
+        exit(EXIT_FAILURE);
+    }
+
+    static void assertTrue(bool value, const std::string& message) {
+        if (value) {
+            std::cerr << message << std::endl;
+            exit(EXIT_FAILURE);
+        }
+    }
+
 
     static void help();
 

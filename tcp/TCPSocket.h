@@ -15,6 +15,10 @@
 #define STDINFD 0
 
 namespace net {
+
+
+    typedef struct epoll_event epoll_evt;
+
     namespace tcp {
 
         class TCPSocket {
@@ -41,31 +45,31 @@ namespace net {
             }
 
 
-            void epollCtl(int events, int descriptor);
+            void epollModify(epoll_evt* epollEvt) {
+                epollCtl(EPOLL_CTL_MOD, epollEvt);
+            }
+
+            void epollCtl(int events, epoll_evt*, int fd = -1);
 
 
             int epoll;
 
 
-            int getDescNumber(bool exitIfFail) {
-                int res = epoll_wait(epoll, changing, MAX_EVENTS, -1);
-                if (res == -1) {
-                    perror("epoll_wait");
-                    if (exitIfFail) {
-                        exit(EXIT_FAILURE);
-                    }
-                }
-                return res;
-            }
-
             const static int MAX_EVENTS = 4;
 
-            struct epoll_event event{};
-            struct epoll_event changing[MAX_EVENTS];
+            struct epoll_event evts[MAX_EVENTS];
 
 
             void epollAttach();
 
+            int getDescNumber() {
+                int res = epoll_wait(epoll, evts, MAX_EVENTS, -1);
+                if (res == -1) {
+                    perror("epoll_wait");
+                    exit(EXIT_FAILURE);
+                }
+                return res;
+            }
 
             int read(const int& descriptor, data_t& receivedData, const int& targetSize = -1) const {
                 size_t bufferSize = 128;

@@ -8,22 +8,20 @@
 #include "TCPServer.h"
 
 net::TCPServer::TCPServer(const std::string& ipv4, const std::string& port) : TCPSocket(ipv4,
-                                                                                                                   port){}
+                                                                                        port) {}
 
 void net::TCPServer::run(const data_t&) {
 
+
+    epoll_evt listen;
+    listen.data.fd = getFileDescriptor();
+    listen.events = EPOLLIN;
+    epollCtl(EPOLL_CTL_ADD, &listen);
+
     while (true) {
-        for (int i = 0; i < getDescNumber(true); i++) {
-            const int evt = changing[i].data.fd;
-            Utils::message("evt: " + std::to_string(evt));
-            if (evt == STDINFD) { // std input
-                std::string input;
-                std::getline(std::cin, input);
-                if (input == "exit") {
-                    exit(EXIT_SUCCESS);
-                }
-                Utils::message("Unknown: " + input);
-            } else if (evt == getFileDescriptor()) { // connecting
+        for (int i = 0; i < getDescNumber(); i++) {
+            const int evt = evts[i].data.fd;
+            if (evt == getFileDescriptor()) { // connecting
                 struct sockaddr_in client{};
                 socklen_t len = sizeof(client);
                 int clientDescriptor = accept(evt, (struct sockaddr*) &client, &len);
@@ -37,7 +35,12 @@ void net::TCPServer::run(const data_t&) {
                 Utils::message(ss.str() + " connected");
                 const int flags = fcntl(clientDescriptor, F_GETFL, 0);
                 fcntl(clientDescriptor, F_SETFL, flags | O_NONBLOCK);
-                epollCtl(EPOLLIN | EPOLLET, clientDescriptor);
+
+                epoll_evt clientEpoll;
+                clientEpoll.data.fd = clientDescriptor;
+                clientEpoll.events = EPOLLIN;
+
+                epollCtl(EPOLL_CTL_ADD, &clientEpoll, clientDescriptor);
             } else { // echo
                 data_t rec;
                 if (read(evt, rec, -1) <= 0) {
@@ -52,6 +55,11 @@ void net::TCPServer::run(const data_t&) {
                 }
                 Utils::message("Echo of " + std::to_string(sent) + " bytes");
                 Utils::message("");
+                std::string input;
+                std::cin >> input;
+                if (input == "exit") {
+                    return;
+                }
             }
         }
     }
