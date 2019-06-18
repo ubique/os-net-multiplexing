@@ -48,7 +48,7 @@ void Client::run() {
                  while (length = recv(mSocket, responseBuffer, BUFFER_SIZE, 0)) {
                      if (length == -1) {
                          if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                             return;
+                             break;
                          }
                          throw ClientException("Receive failure");
                      } else {
@@ -103,7 +103,7 @@ void Client::sendAll(std::string const& str) {
     int sent = 0, cur = 0;
     while (sent < str.size()) {
         if ((cur = send(mSocket, str.substr(sent).data(), str.size() - sent, 0)) == -1) {
-            throw ClientException("Request sending failed");
+            throw ClientException("Request failure");
         }
         sent += cur;
     }

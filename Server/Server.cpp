@@ -125,7 +125,6 @@ void Server::sendResponse(int fd, ssize_t length) {
     while (sent < data.size()) {
         if ((cur = send(fd, data.substr(sent).data(), data.size() - sent, 0)) == -1) {
             perror("Response was not sent");
-
             if (epoll_ctl(mEpoll, EPOLL_CTL_DEL, fd, NULL) < 0) {
                 perror("Epoll_ctl failed");
             }
