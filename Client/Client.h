@@ -19,7 +19,7 @@ public:
     void run();
 private:
     int openSocket();
-
+    void sendAll(std::string const&);
     bool addToPoll(int, int, uint32_t);
 
     std::string getMessage(std::string const&);

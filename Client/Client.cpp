@@ -44,15 +44,14 @@ void Client::run() {
         }
         for (size_t i = 0; i < ready; ++i) {
              if (events[i].data.fd == mSocket) {
-                 ssize_t length = recv(mSocket,responseBuffer, BUFFER_SIZE, 0);
-                 switch (length) {
-                     case 0: {
-                         return;
-                     }
-                     case -1: {
-                         throw ClientException(getMessage("Response was not received"));
-                     }
-                     default: {
+                 ssize_t length;
+                 while (length = recv(mSocket, responseBuffer, BUFFER_SIZE, 0)) {
+                     if (length == -1) {
+                         if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                             return;
+                         }
+                         throw ClientException("Receive failure");
+                     } else {
                          std::cout << std::string(responseBuffer, length) << std::endl;
                      }
                  }
@@ -61,9 +60,7 @@ void Client::run() {
                  if (str == "quit") {
                      return;
                  } else {
-                     if (send(mSocket, str.data(), str.size(), 0) < 0) {
-                         throw ClientException(getMessage("Send failed"));
-                     }
+                     sendAll(str);
                  }
              }
         }
@@ -99,6 +96,16 @@ Client::~Client() {
     }
     if (close(mEpoll) < 0) {
         perror("Descriptor (epoll) was not closed");
+    }
+}
+
+void Client::sendAll(std::string const& str) {
+    int sent = 0, cur = 0;
+    while (sent < str.size()) {
+        if ((cur = send(mSocket, str.substr(sent).data(), str.size() - sent, 0)) == -1) {
+            throw ClientException("Request sending failed");
+        }
+        sent += cur;
     }
 }
 

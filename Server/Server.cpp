@@ -99,31 +99,42 @@ bool Server::addToPoll(int efd, int fd, uint32_t ev) {
 }
 
 void Server::process(int fd) {
-    ssize_t length = read(fd, requestBuffer, BUFFER_SIZE);
-    switch (length) {
-        case 0: {
-            if (epoll_ctl(mEpoll, EPOLL_CTL_DEL, fd, NULL) < 0) {
-                perror("Epoll_ctl failed");
+    ssize_t length;
+    while (length = read(fd, requestBuffer, BUFFER_SIZE)) {
+        if (length == -1) {
+            if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                return;
             }
-            break;
-        }
-        case -1: {
             perror("Read failed");
             if (epoll_ctl(mEpoll, EPOLL_CTL_DEL, fd, NULL) < 0) {
                 perror("Epoll_ctl failed");
             }
-            break;
-        }
-        default: {
+            if (close(fd) < 0) {
+                perror("Descriptor was not closed");
+            }
+            return;
+        } else {
             sendResponse(fd, length);
         }
     }
 }
 
 void Server::sendResponse(int fd, ssize_t length) {
-    std::cout << fd << " " << std::string(requestBuffer, length) << std::endl;
-    if (write(fd, requestBuffer, length) < 0) {
-        perror("Write failed");
+    int sent = 0, cur = 0;
+    std::string data(requestBuffer, length);
+    while (sent < data.size()) {
+        if ((cur = send(fd, data.substr(sent).data(), data.size() - sent, 0)) == -1) {
+            perror("Response was not sent");
+
+            if (epoll_ctl(mEpoll, EPOLL_CTL_DEL, fd, NULL) < 0) {
+                perror("Epoll_ctl failed");
+            }
+            if (close(fd) < 0) {
+                perror("Descriptor was not closed");
+            }
+            return;
+        }
+        sent += cur;
     }
 }
 
