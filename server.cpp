@@ -1,33 +1,30 @@
 #include "utils.h"
 
 int main(int argc, char *argv[]) {
-    if (argc != 3)
-        printError("Excepted address and port");
+    if (argc != 2)
+        printError("Excepted port");
 
     char buffer[bufferLen];
     int mainSock;
 
+    auto port = strtol(argv[1], nullptr, 10);
+    if (errno == ERANGE || port > UINT16_MAX || port <= 0)
+        printError("Number of port should be uint16_t");
     int epoll;
     if ((epoll = epoll_create1(0)) == -1)
         printSysError("epoll_create1");
 
     struct epoll_event events[NUMBER_OF_EVENTS], event;
     struct sockaddr_in address;
-    char *addr = argv[1];
     address.sin_family = AF_INET;
-    if (inet_aton(addr, &address.sin_addr) <= 0)
-        printSysError("inet_aton");
-    address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-
-    auto port = strtol(argv[2], nullptr, 10);
-    if (errno == ERANGE || port > UINT16_MAX || port <= 0)
-        printError("Number of port should be uint16_t");
     address.sin_port = htons(static_cast<uint16_t>(port));
+    address.sin_addr.s_addr = INADDR_ANY;
+
 
     if ((mainSock = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0)) <= 0)
         printSysError("socket");
 
-    if (bind(mainSock, (struct sockaddr *) &address, sizeof(sockaddr_in)) < 0)
+    if (bind(mainSock, (struct sockaddr *) &address, sizeof(address)) < 0)
         printSysError("bind");
 
     int backlog = 10;
