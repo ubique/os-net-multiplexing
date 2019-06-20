@@ -1,13 +1,12 @@
 #include "utils.h"
 
 int main(int argc, char *argv[]) {
-    if (argc != 3)
-        printError("Expected: address and port\n");
+    if (argc != 2)
+        printError("Expected: port\n");
 
-    char *address = argv[1];
     char buffer[bufferLen];
 
-    auto port = strtol(argv[2], nullptr, 10);
+    auto port = strtol(argv[1], nullptr, 10);
     if (errno == ERANGE || port > UINT16_MAX || port <= 0)
         printError("Number of port should be uint16_t");
 
@@ -18,16 +17,14 @@ int main(int argc, char *argv[]) {
 
     struct sockaddr_in addr;
     addr.sin_family = AF_INET;
-    if (inet_aton(address, &addr.sin_addr) == 0)
-        printSysError("inet_aton");
-
     addr.sin_port = htons(static_cast<uint16_t>(port));
+    addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
 
     int sock;
     if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0)
         printSysError("socket");
 
-    if (connect(sock, reinterpret_cast<sockaddr *>(&addr), sizeof(sockaddr_in)) == -1)
+    if (connect(sock, (sockaddr *)(&addr), sizeof(addr)) == -1)
         printSysError("connect");
 
     printf("Client %d connected.\n", sock);
