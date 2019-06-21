@@ -26,17 +26,19 @@ void get_args(char *argv[], string &host, int &port) {
     host = argv[1];
 }
 
-void transform_msg(string &msg) {
+void transform_msg(vector<char>& msg) {
     if (msg.empty())
         return;
-    msg = "Z" + msg.substr(1, msg.size() - 1);
+    msg[0] = 'Z';
+    msg.back() = '\0';
 }
 
 const int CONNECTIONS_TOTAL = 64;
+const int BUFFER_SIZE = 42;
 
 int main(int argc, char *argv[]) {
     if (argc < 3) {
-        cout << "Usage: ./os-net-server [host] [port]";
+        cout << "Usage: ./os-net-multiplexing-server [host] [port]";
         exit(EXIT_FAILURE);
     }
 
@@ -45,7 +47,7 @@ int main(int argc, char *argv[]) {
     get_args(argv, host, port);
 
     //creating socket file descriptor
-    int fd = socket(AF_INET, SOCK_STREAM, 0);
+    int fd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
     utils::check(fd, "in socket");
 
     //initializing server
@@ -55,19 +57,17 @@ int main(int argc, char *argv[]) {
     server.sin_port = htons(port);
 
     socklen_t s_len = sizeof(sockaddr_in);
-    char buffer_size;
-    string buffer;
+    vector<char> buffer(BUFFER_SIZE);
 
     utils::check(inet_pton(AF_INET, host.data(), &server.sin_addr), "in inet_pton");
     utils::check(bind(fd, (sockaddr *) (&server), s_len), "in bind");
     utils::check(listen(fd, SOMAXCONN), "in listen");
 
     //let's create epoll descriptor
-    struct epoll_event ee{}, events[CONNECTIONS_TOTAL];
+    struct epoll_event ee{}, epollout_event{}, events[CONNECTIONS_TOTAL];
     int ed = epoll_create1(0);
     int descriptors;
-    utils::add_epoll(ed, 0, &ee);
-    utils::add_epoll(ed, fd, &ee);
+    utils::add_epoll(ed, fd, &ee, EPOLLIN, EPOLL_CTL_ADD);
 
     //running...
 #pragma clang diagnostic push
@@ -80,19 +80,23 @@ int main(int argc, char *argv[]) {
         for (int i = 0; i < descriptors; i++) {
             int e_fd = events[i].data.fd;
             if (e_fd == fd) {
-                utils::handle_new_connection(fd, ed, &ee);
+                epoll_event ee_1{};
+                utils::handle_new_connection(fd, ed, &ee_1);
             } else {
-                utils::receive_msg(&buffer_size, 1, e_fd);
-                buffer.clear();
-                buffer.resize(buffer_size, 0);
-                utils::receive_msg(&buffer[0], buffer_size, e_fd);
-                utils::print_msg(buffer);
+                if (events[i].events & EPOLLIN) {
+                    utils::receive_msg(&buffer[0], BUFFER_SIZE, e_fd);
+                    utils::print_msg(buffer);
 
-                transform_msg(buffer);
-                utils::send_msg(&buffer[0], buffer_size, e_fd);
+                    transform_msg(buffer);
+                    struct epoll_event ee_1{};
 
-                utils::check(shutdown(e_fd, SHUT_RDWR), "in client descriptor shutdown", true);
-                utils::check(close(e_fd), "in client descriptor close", true);
+                    utils::add_epoll(ed, e_fd, &ee_1, EPOLLOUT, EPOLL_CTL_MOD);
+                }
+                if (events[i].events & EPOLLOUT) {
+                    utils::send_msg(&buffer[0], BUFFER_SIZE, e_fd);
+                    utils::check(shutdown(e_fd, SHUT_RDWR), "in client descriptor shutdown", true);
+                    utils::check(close(e_fd), "in client descriptor close", true);
+                }
             }
         }
     }

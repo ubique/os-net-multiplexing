@@ -28,9 +28,11 @@ void get_args(char *argv[], string &host, int &port) {
     host = argv[1];
 }
 
+const int BUFFER_SIZE = 42;
+
 int main(int argc, char *argv[]) {
     if (argc < 3) {
-        cout << "Usage: ./os-net-client [host] [port]";
+        cout << "Usage: ./os-net-multiplexing-client [host] [port]";
         exit(EXIT_FAILURE);
     }
 
@@ -40,7 +42,7 @@ int main(int argc, char *argv[]) {
     get_args(argv, host, port);
 
     //creating socket file descriptor
-    int fd = socket(AF_INET, SOCK_STREAM, 0);
+    int fd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
     utils::check(fd, "in socket");
 
     struct sockaddr_in server{};
@@ -51,40 +53,38 @@ int main(int argc, char *argv[]) {
     socklen_t s_len = sizeof(sockaddr_in);
 
     utils::check(inet_pton(AF_INET, host.data(), &server.sin_addr), "in inet_pton");
-    utils::check(connect(fd, (sockaddr *) (&server), sizeof(server)), "in connect");
+    int connect_result = (connect(fd, (sockaddr *) (&server), sizeof(server)) == -1 && errno != EINPROGRESS) ? -1 : 0;
+    utils::check(connect_result, "in connect");
 
-    struct epoll_event epoll_event{}, events[CONNECTIONS_TOTAL];
-    utils::add_epoll(ed, 0, &epoll_event);
-    utils::add_epoll(ed, fd, &epoll_event);
+    struct epoll_event ee{}, ee_1{};
 
-    int descriptors = epoll_wait(ed, events, CONNECTIONS_TOTAL, -1);
+    utils::add_epoll(ed, fd, &ee, EPOLLOUT, EPOLL_CTL_ADD);
+
+    int descriptors = epoll_wait(ed, &ee_1, 1, -1);
     utils::check(descriptors, "in epoll_wait");
 
-    string msg;
-    char msg_size = msg.size();
+    vector<char> msg(BUFFER_SIZE);
+    for (char& x: msg) {
+        x = 'a';
+    }
+    msg.back() = '\0';
 
-    for (int i = 0; i < descriptors; i++) {
-        if (events[i].data.fd == 0) {
-            cout << "Enter message:\n";
-            cin >> msg;
-            if (msg.size() >= 127) {
-                cerr << "Size of the message must be less than 127\n";
-                exit(EXIT_FAILURE);
-            }
-            msg_size = msg.size();
+    if (!(ee.events & EPOLLOUT)) {
+        return EXIT_FAILURE;
+    }
+    utils::send_msg(&msg[0], BUFFER_SIZE, fd);
 
-            utils::send_msg(&msg_size, 1, fd);
-            utils::send_msg(&msg[0], msg_size, fd);
+    utils::add_epoll(ed, fd, &ee, EPOLLIN, EPOLL_CTL_MOD);
 
-            utils::receive_msg(&msg[0], msg_size, fd);
-            utils::print_msg(msg);
-        }
-        else if (events[i].data.fd == fd) {
-            utils::receive_msg(&msg[0], msg_size, fd);
-            utils::print_msg(msg);
-        }
+    descriptors = epoll_wait(ed, &ee_1, 1, -1);
+    utils::check(descriptors, "in epoll_wait");
+
+    if (!(ee.events & EPOLLIN)) {
+        return EXIT_FAILURE;
     }
 
+    utils::receive_msg(&msg[0], BUFFER_SIZE, fd);
+    utils::print_msg(msg);
     utils::check(shutdown(fd, SHUT_RDWR), "in descriptor shutdown");
     utils::check(close(fd), "in descriptor close");
     return 0;
