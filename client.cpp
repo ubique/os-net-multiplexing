@@ -30,7 +30,7 @@ int main(int argc, char * argv[]) {
 	address.sin_family = AF_INET;
 	address.sin_port = htons(port);
 	address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-	if (connect(sock, (struct sockaddr *)&address, sizeof(address)) < 0) {
+	if (connect(sock, (struct sockaddr *)&address, sizeof(address)) < 0 && EINPROGRESS != 0) {
 		perror("error with connection");
 		return 2;
 	}
@@ -39,7 +39,6 @@ int main(int argc, char * argv[]) {
 	int info_size = strlen(info);
 	char * info_pointer = info;
 
-	// new code (sending)
 	int epollfd = epoll_create1(0);
 	if (epollfd == -1) {
 		perror("epoll_create");
