@@ -18,7 +18,7 @@ int main(int argc, char * argv[]) {
 		return 1;
 	}
 
-	int sock = socket(AF_INET, SOCK_STREAM, 0);
+	int sock = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
 	if (sock < 0) {
 		perror("error with sockets");
 		return 1;
